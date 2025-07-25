@@ -191,8 +191,24 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
       setIsSubmitting(false);
     }
   };
+  
+    const renderStepContent = () => {
+    const formData = form.getValues();
+    // This derived state will be recalculated on every render, ensuring it's up-to-date
+    const fullExamData: Exam | null = (
+      user &&
+      formData.title &&
+      formData.questions &&
+      formData.questions.length > 0
+    ) ? {
+      id: existingExam?.id || uuidv4(),
+      userId: user.uid,
+      createdAt: existingExam?.createdAt || new Date(),
+      updatedAt: new Date(),
+      ...formData
+    } : null;
 
-  const renderStepContent = () => {
+
     switch (currentStep) {
       case 0: // General Info
         return (
@@ -358,15 +374,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
           </Card>
         );
          case 3: // Final Review
-            const formData = form.getValues();
             const totalWeight = formData.questions.reduce((acc, q) => acc + (Number(q.weight) || 0), 0);
-            const fullExamData: Exam = {
-                id: existingExam?.id || uuidv4(),
-                userId: user?.uid || '',
-                createdAt: existingExam?.createdAt || new Date(),
-                updatedAt: new Date(),
-                ...formData
-            }
 
             return (
                 <Card>
@@ -392,7 +400,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                                  </div>
                              ))}
                         </div>
-                        {isClient ? (
+                        {isClient && fullExamData ? (
                             <PDFDownloadLink
                                 document={<AnswerSheetPDF exam={fullExamData} />}
                                 fileName={`${fullExamData.title.replace(/\s/g, '_')}_gabarito.pdf`}
@@ -408,7 +416,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                         ) : (
                             <Button type="button" className="w-full" disabled>
                                 <LoaderCircle className="mr-2 animate-spin" />
-                                Carregando gerador de PDF...
+                                Carregando dados da prova...
                             </Button>
                         )}
                     </CardContent>
@@ -416,6 +424,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
             );
     }
   };
+
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
@@ -451,3 +460,5 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
     </div>
   );
 }
+
+    
