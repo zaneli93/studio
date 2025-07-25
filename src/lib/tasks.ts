@@ -20,7 +20,8 @@ import type { Task, TaskCreate } from '@/types';
 
 function getDb() {
     if (!isFirebaseConfigured || !db) {
-        console.warn("Atenção: O Firestore não está configurado. As operações com o banco de dados serão desabilitadas.");
+        const warning = "Atenção: O Firestore não está configurado. As operações com o banco de dados serão desabilitadas.";
+        console.warn(warning);
         throw new Error("O Firestore não está inicializado");
     }
     return db;
@@ -29,6 +30,24 @@ function getDb() {
 const getTasksCollection = (userId: string) => {
   return collection(getDb(), 'tasks', userId, 'items');
 }
+
+export const getTasks = async (userId: string): Promise<Task[]> => {
+    const tasksCollection = getTasksCollection(userId);
+    const q = query(tasksCollection, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    const tasks: Task[] = [];
+    querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        tasks.push({
+            id: doc.id,
+            ...data,
+            dueDate: data.dueDate ? (data.dueDate as Timestamp).toDate() : null,
+            createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
+            updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : new Date(),
+        } as Task);
+    });
+    return tasks;
+};
 
 export const subscribeTasks = (
     userId: string, 
@@ -68,7 +87,7 @@ export const subscribeTasks = (
 
 export const createTask = async (userId: string, task: TaskCreate) => {
     const tasksCollection = getTasksCollection(userId);
-    await addDoc(tasksCollection, {
+    return addDoc(tasksCollection, {
         ...task,
         completed: false,
         createdAt: serverTimestamp(),

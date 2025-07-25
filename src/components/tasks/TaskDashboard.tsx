@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { subscribeTasks } from '@/lib/tasks';
+import { subscribeTasks, getTasks } from '@/lib/tasks';
 import type { Task } from '@/types';
 import TaskItem from './TaskItem';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '../ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '../ui/skeleton';
 
 export default function TaskDashboard() {
   const { user } = useAuth();
@@ -28,28 +29,55 @@ export default function TaskDashboard() {
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    const unsubscribe = subscribeTasks(user.uid, 
-      (newTasks) => {
-        setTasks(newTasks);
-        const newCategories = Array.from(new Set(newTasks.map(t => t.category).filter(Boolean)));
-        setCategories(newCategories as string[]);
-        setLoading(false);
-      },
-      (err) => {
+    let unsubscribe: () => void;
+
+    const fetchInitialTasks = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const initialTasks = await getTasks(user.uid);
+        console.log("[tasks] initial docs:", initialTasks.length);
+        setTasks(initialTasks);
+        
+        // After initial fetch, set up the real-time listener
+        unsubscribe = subscribeTasks(
+          user.uid,
+          (newTasks) => {
+            setTasks(newTasks); // This will keep the list in sync
+            const newCategories = Array.from(new Set(newTasks.map(t => t.category).filter(Boolean)));
+            setCategories(newCategories as string[]);
+          },
+          (err) => {
+            console.error(err);
+            setError("Não foi possível carregar as tarefas em tempo real. Os dados podem estar desatualizados.");
+            toast({
+              variant: 'destructive',
+              title: 'Erro de Sincronização',
+              description: 'Não foi possível conectar para atualizações em tempo real.'
+            });
+          }
+        );
+
+      } catch (err) {
         console.error(err);
         setError("Não foi possível carregar as tarefas. Verifique sua conexão ou permissões.");
-        setLoading(false);
         toast({
           variant: 'destructive',
           title: 'Erro ao buscar tarefas',
           description: 'Verifique sua conexão e tente recarregar a página.'
         });
+      } finally {
+        setLoading(false);
       }
-    );
+    };
+
+    fetchInitialTasks();
     
-    return () => unsubscribe();
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [user, toast]);
 
   const filteredTasks = useMemo(() => {
@@ -64,14 +92,25 @@ export default function TaskDashboard() {
 
   const renderTaskList = useCallback((taskList: Task[], emptyState: React.ReactNode) => {
     if (loading) {
-      return (
-        <div className="flex justify-center items-center py-10">
-          <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-          <p className="ml-4">Carregando tarefas...</p>
-        </div>
-      );
+        return (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                 <div key={i} className="flex flex-col space-y-3 p-4 border rounded-lg">
+                    <div className="flex items-center space-x-4">
+                        <Skeleton className="h-5 w-5 rounded-md" />
+                        <Skeleton className="h-4 w-4/5" />
+                    </div>
+                    <Skeleton className="h-4 w-full" />
+                    <div className="flex justify-between pt-2">
+                        <Skeleton className="h-6 w-1/4" />
+                        <Skeleton className="h-6 w-1/4" />
+                    </div>
+                </div>
+              ))}
+            </div>
+        );
     }
-     if (error) {
+     if (error && tasks.length === 0) {
       return (
          <div className="text-center py-16 border-dashed border-2 rounded-lg border-destructive/50">
             <WifiOff className="mx-auto h-12 w-12 text-destructive" />
@@ -90,7 +129,7 @@ export default function TaskDashboard() {
       );
     }
     return emptyState;
-  }, [loading, error]);
+  }, [loading, error, tasks.length]);
 
 
   if (!user) return null;
