@@ -47,7 +47,6 @@ export default function ExamsPage() {
   const { toast } = useToast();
   
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
-  const [selectedExamForPdf, setSelectedExamForPdf] = useState<Exam | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfReady, setPdfReady] = useState(false);
   
@@ -127,6 +126,7 @@ export default function ExamsPage() {
           description: 'A prova está incompleta ou não tem questões.',
         });
         setIsPdfModalOpen(false);
+        setIsGeneratingPdf(false);
         return;
       }
       
@@ -141,7 +141,8 @@ export default function ExamsPage() {
       ]);
 
       // Register Inter font if not already registered.
-      if (Font.getRegisteredFontFamilies().indexOf('Inter') === -1) {
+      // This check needs to be client-side only.
+      if (typeof window !== 'undefined' && Font.getRegisteredFontFamilies().indexOf('Inter') === -1) {
           Font.register({
             family: 'Inter',
             fonts: [
@@ -211,7 +212,6 @@ export default function ExamsPage() {
 
   const closePdfModal = () => {
     setIsPdfModalOpen(false);
-    setSelectedExamForPdf(null);
     setPdfReady(false);
     setPdfDownloadComponent(null);
   }
@@ -275,7 +275,7 @@ export default function ExamsPage() {
                       variant="ghost" 
                       size="icon" 
                       onClick={() => handleGeneratePdf(exam.id)}
-                      disabled={isGeneratingPdf && !pdfReady}
+                      disabled={isGeneratingPdf}
                       title={"Baixar gabarito"}
                     >
                       <Download className="h-4 w-4" />
@@ -326,7 +326,7 @@ export default function ExamsPage() {
                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
                 <p>Carregando componentes do PDF...</p>
               </div>
-            ) : pdfReady ? (
+            ) : pdfReady && PdfDownloadComponent ? (
                PdfDownloadComponent
             ) : (
                <p>Ocorreu um erro ao preparar o PDF.</p>

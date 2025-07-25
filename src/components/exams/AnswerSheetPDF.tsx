@@ -4,8 +4,8 @@ import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/render
 import type { Exam } from '@/types';
 import QRCode from 'qrcode';
 
-// NOTE: Font registration is moved to the parent component (`ExamsPage`)
-// to be called only when dynamically importing this module.
+// NOTE: Font registration is handled by the parent component (`ExamsPage`)
+// before this component is rendered.
 
 const A4_WIDTH = 595.28;
 const A4_HEIGHT = 841.89;
