@@ -139,12 +139,13 @@ interface AnswerSheetPDFProps {
 const AnswerSheetPDF: React.FC<AnswerSheetPDFProps> = ({ exam }) => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
 
-  // Hard guard against undefined props
-  if (!exam || !exam.questions || exam.questions.length === 0) {
+  // Hard guard against undefined props before any hooks
+  if (!exam || !exam.id || !exam.questions || exam.questions.length === 0) {
     if (process.env.NODE_ENV !== 'production') {
         console.error("[AnswerSheetPDF] Invalid or empty exam prop received:", exam);
     }
-    return null; // Return nothing if the exam data is invalid
+    // Return null to prevent the renderer from crashing.
+    return null;
   }
 
   useEffect(() => {
