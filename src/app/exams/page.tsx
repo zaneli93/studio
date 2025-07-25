@@ -34,11 +34,6 @@ import type { Exam } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// NOTE: Static imports for react-pdf are removed.
-// They will be imported dynamically.
-// import { PDFDownloadLink } from '@react-pdf/renderer';
-// import AnswerSheetPDF from '@/components/exams/AnswerSheetPDF';
-
 export default function ExamsPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -49,8 +44,6 @@ export default function ExamsPage() {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfReady, setPdfReady] = useState(false);
-  
-  // State to hold the dynamically imported component
   const [PdfDownloadComponent, setPdfDownloadComponent] = useState<React.ReactNode | null>(null);
 
 
@@ -139,9 +132,8 @@ export default function ExamsPage() {
         import("@react-pdf/renderer"),
         import("@/components/exams/AnswerSheetPDF"),
       ]);
-
-      // Register Inter font if not already registered.
-      // This check needs to be client-side only.
+      
+      // Font registration needs to be done on the client side.
       if (typeof window !== 'undefined' && Font.getRegisteredFontFamilies().indexOf('Inter') === -1) {
           Font.register({
             family: 'Inter',
@@ -153,7 +145,7 @@ export default function ExamsPage() {
           });
       }
 
-      // Create the component to be rendered
+      // Create the component to be rendered only after modules are loaded
       const downloadComponent = (
          <PDFDownloadLink
             document={<AnswerSheetPDF exam={exam} />}
@@ -317,11 +309,11 @@ export default function ExamsPage() {
           <DialogHeader>
             <DialogTitle>Gerar Gabarito em PDF</DialogTitle>
             <DialogDescription>
-              Seu gabarito está pronto para ser baixado.
+              Seu gabarito está sendo preparado.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center min-h-[10rem]">
-            {(isGeneratingPdf || !pdfReady) ? (
+            {isGeneratingPdf || !pdfReady ? (
               <div className="flex flex-col items-center gap-2">
                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
                 <p>Carregando componentes do PDF...</p>
