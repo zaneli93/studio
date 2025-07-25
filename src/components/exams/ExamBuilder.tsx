@@ -192,20 +192,27 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
     }
   };
   
-    const renderStepContent = () => {
+  const renderStepContent = () => {
     const formData = form.getValues();
+    const isFormValid = user && formData.title && formData.questions && formData.questions.length > 0;
+  
     // This derived state will be recalculated on every render, ensuring it's up-to-date
-    const fullExamData: Exam | null = (
-      user &&
-      formData.title &&
-      formData.questions &&
-      formData.questions.length > 0
-    ) ? {
+    const fullExamData: Exam | null = isFormValid ? {
       id: existingExam?.id || uuidv4(),
       userId: user.uid,
       createdAt: existingExam?.createdAt || new Date(),
       updatedAt: new Date(),
-      ...formData
+      title: formData.title,
+      subject: formData.subject,
+      date: formData.date,
+      questions: formData.questions.map(q => ({
+        id: q.id,
+        type: q.type,
+        statement: q.statement,
+        answerKey: q.answerKey,
+        margin: q.margin,
+        weight: q.weight,
+      })),
     } : null;
 
 
@@ -386,7 +393,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                         <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
                            <h4 className="font-bold text-lg">{formData.title}</h4>
                            <p><span className="font-semibold">Disciplina/Turma:</span> {formData.subject}</p>
-                           <p><span className="font-semibold">Data:</span> {format(formData.date, 'PPP', { locale: ptBR })}</p>
+                           <p><span className="font-semibold">Data:</span> {formData.date ? format(formData.date, 'PPP', { locale: ptBR }) : 'Data não definida'}</p>
                            <p><span className="font-semibold">Total de Questões:</span> {formData.questions.length}</p>
                            <p><span className="font-semibold">Nota Máxima (Soma dos Pesos):</span> {totalWeight.toFixed(1)}</p>
                         </div>
@@ -460,5 +467,3 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
     </div>
   );
 }
-
-    
