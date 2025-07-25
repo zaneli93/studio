@@ -21,11 +21,8 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { LoaderCircle, CalendarIcon, PlusCircle, Trash2, ArrowLeft, ArrowRight, Save, Download } from 'lucide-react';
+import { LoaderCircle, CalendarIcon, PlusCircle, Trash2, ArrowLeft, ArrowRight, Save } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
-import { PDFDownloadLink } from '@react-pdf/renderer';
-import AnswerSheetPDF from './AnswerSheetPDF';
-
 
 const questionSchema = z.object({
   id: z.string(),
@@ -79,7 +76,6 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isClient, setIsClient] = useState(false);
   const [numberOfQuestions, setNumberOfQuestions] = useState(existingExam?.questions.length || 1);
 
   const form = useForm<ExamFormData>({
@@ -102,14 +98,9 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
     name: "questions",
   });
   
-   useEffect(() => {
-    setIsClient(true);
-  }, []);
-  
   useEffect(() => {
     if (existingExam) {
        setNumberOfQuestions(existingExam.questions.length);
-       // The existing exam data is already set as defaultValues
     } else {
       const currentQuestions = form.getValues('questions');
       if (numberOfQuestions > currentQuestions.length) {
@@ -194,44 +185,6 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
   
   const renderStepContent = () => {
     const formData = form.getValues();
-    const isFormValid = form.formState.isValid;
-
-    const getFullExamData = (): Exam | null => {
-        if (!user || !isFormValid) return null;
-        
-        const data = form.getValues();
-        
-        const examData: Exam = {
-            id: existingExam?.id || uuidv4(),
-            userId: user.uid,
-            title: data.title,
-            subject: data.subject,
-            date: data.date,
-            questions: data.questions.map(q => ({
-                id: q.id,
-                type: q.type,
-                statement: q.statement,
-                answerKey: q.answerKey,
-                margin: q.margin || 0,
-                weight: q.weight,
-            })),
-            createdAt: existingExam?.createdAt || new Date(),
-            updatedAt: new Date(),
-        };
-
-        if (process.env.NODE_ENV !== 'production') {
-            console.log("[ExamBuilder] exam data:", examData);
-        }
-        
-        // Final validation check
-        if (!examData.title || !examData.subject || !examData.date || !examData.questions || examData.questions.length === 0) {
-            return null;
-        }
-
-        return examData;
-    };
-    
-    const fullExamData = getFullExamData();
 
     switch (currentStep) {
       case 0: // General Info
@@ -423,25 +376,6 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                                  </div>
                              ))}
                         </div>
-                        {isClient && fullExamData ? (
-                          <PDFDownloadLink
-                            document={<AnswerSheetPDF exam={fullExamData} />}
-                            fileName={`${fullExamData.title.replace(/\s/g, '_')}_gabarito.pdf`}
-                            onError={() => toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um erro inesperado. Tente novamente.'})}
-                          >
-                            {({ loading }) => (
-                              <Button type="button" className="w-full" disabled={loading}>
-                                {loading ? <LoaderCircle className="mr-2 animate-spin" /> : <Download className="mr-2" />}
-                                Gerar gabarito PDF
-                              </Button>
-                            )}
-                          </PDFDownloadLink>
-                        ) : (
-                          <Button type="button" className="w-full" disabled>
-                            <LoaderCircle className="mr-2 animate-spin" />
-                            Carregando dados da prova...
-                          </Button>
-                        )}
                     </CardContent>
                 </Card>
             );

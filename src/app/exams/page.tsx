@@ -7,7 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import Header from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { LoaderCircle, PlusCircle, FileText, Inbox, Edit, Copy, Trash2 } from 'lucide-react';
+import { LoaderCircle, PlusCircle, FileText, Inbox, Edit, Copy, Trash2, Download } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,8 @@ import { getExamsForUser, deleteExam, duplicateExam } from '@/lib/exams';
 import type { Exam } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import AnswerSheetPDF from '@/components/exams/AnswerSheetPDF';
 
 export default function ExamsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -86,6 +88,9 @@ export default function ExamsPage() {
     }
   };
 
+  const isExamValidForPdf = (exam: Exam) => {
+    return exam && exam.questions && exam.questions.length > 0;
+  };
 
   if (authLoading || !user) {
     return (
@@ -148,6 +153,25 @@ export default function ExamsPage() {
                       <span className="sr-only">Editar</span>
                     </Link>
                   </Button>
+                   {isExamValidForPdf(exam) ? (
+                    <PDFDownloadLink
+                      document={<AnswerSheetPDF exam={exam} />}
+                      fileName={`${exam.title.replace(/\s/g, '_')}_gabarito.pdf`}
+                      onError={() => toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um erro inesperado. Tente novamente.'})}
+                    >
+                      {({ loading }) => (
+                        <Button variant="ghost" size="icon" disabled={loading} title="Baixar gabarito">
+                           {loading ? <LoaderCircle className="animate-spin" /> : <Download className="h-4 w-4" />}
+                           <span className="sr-only">Baixar gabarito</span>
+                        </Button>
+                      )}
+                    </PDFDownloadLink>
+                   ) : (
+                      <Button variant="ghost" size="icon" disabled title="Prova sem questões">
+                        <Download className="h-4 w-4" />
+                        <span className="sr-only">Prova sem questões</span>
+                      </Button>
+                   )}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
