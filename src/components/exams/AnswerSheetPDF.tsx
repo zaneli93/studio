@@ -4,7 +4,9 @@ import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/
 import type { Exam } from '@/types';
 import QRCode from 'qrcode';
 
-// Register Inter font
+// Register Inter font - moved to be called dynamically from the parent component
+// to avoid running this on every render.
+/*
 Font.register({
   family: 'Inter',
   fonts: [
@@ -13,6 +15,8 @@ Font.register({
     { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 700 },
   ],
 });
+*/
+
 
 // A4 size in points (72 points per inch)
 const A4_WIDTH = 595.28;
