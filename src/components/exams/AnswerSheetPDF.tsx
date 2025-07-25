@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
-import type { Exam, Question } from '@/types';
+import type { Exam } from '@/types';
 import QRCode from 'qrcode';
 
 // Register Inter font
@@ -19,8 +19,6 @@ const A4_WIDTH = 595.28;
 const A4_HEIGHT = 841.89;
 const MARGIN_X = 40;
 const MARGIN_Y = 40;
-const CONTENT_WIDTH = A4_WIDTH - MARGIN_X * 2;
-const CONTENT_HEIGHT = A4_HEIGHT - MARGIN_Y * 2;
 
 const styles = StyleSheet.create({
   page: {
@@ -141,12 +139,20 @@ interface AnswerSheetPDFProps {
 const AnswerSheetPDF: React.FC<AnswerSheetPDFProps> = ({ exam }) => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
 
+  // Hard guard against undefined props
+  if (!exam || !exam.questions || exam.questions.length === 0) {
+    if (process.env.NODE_ENV !== 'production') {
+        console.error("[AnswerSheetPDF] Invalid or empty exam prop received:", exam);
+    }
+    return null; // Return nothing if the exam data is invalid
+  }
+
   useEffect(() => {
     const generateQRCode = async () => {
       try {
         const qrData = JSON.stringify({
           examId: exam.id,
-          studentId: '<PLACEHOLDER>', // As per requirements
+          studentId: '<PLACEHOLDER>',
         });
         const url = await QRCode.toDataURL(qrData);
         setQrCodeUrl(url);

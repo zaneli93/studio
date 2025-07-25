@@ -21,7 +21,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { LoaderCircle, CalendarIcon, PlusCircle, Trash2, ArrowLeft, ArrowRight, Save, FileCheck2, Download } from 'lucide-react';
+import { LoaderCircle, CalendarIcon, PlusCircle, Trash2, ArrowLeft, ArrowRight, Save, Download } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import AnswerSheetPDF from './AnswerSheetPDF';
@@ -197,15 +197,11 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
     const isFormValid = form.formState.isValid;
 
     const getFullExamData = (): Exam | null => {
-        if (!user) return null;
+        if (!user || !isFormValid) return null;
         
         const data = form.getValues();
         
-        if (!data.title || !data.subject || !data.date || !data.questions || data.questions.length === 0) {
-            return null;
-        }
-
-        return {
+        const examData: Exam = {
             id: existingExam?.id || uuidv4(),
             userId: user.uid,
             title: data.title,
@@ -222,6 +218,17 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
             createdAt: existingExam?.createdAt || new Date(),
             updatedAt: new Date(),
         };
+
+        if (process.env.NODE_ENV !== 'production') {
+            console.log("[ExamBuilder] exam data:", examData);
+        }
+        
+        // Final validation check
+        if (!examData.title || !examData.subject || !examData.date || !examData.questions || examData.questions.length === 0) {
+            return null;
+        }
+
+        return examData;
     };
     
     const fullExamData = getFullExamData();
@@ -416,10 +423,11 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                                  </div>
                              ))}
                         </div>
-                        {isClient && fullExamData && isFormValid ? (
+                        {isClient && fullExamData ? (
                           <PDFDownloadLink
                             document={<AnswerSheetPDF exam={fullExamData} />}
                             fileName={`${fullExamData.title.replace(/\s/g, '_')}_gabarito.pdf`}
+                            onError={() => toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um erro inesperado. Tente novamente.'})}
                           >
                             {({ loading }) => (
                               <Button type="button" className="w-full" disabled={loading}>
