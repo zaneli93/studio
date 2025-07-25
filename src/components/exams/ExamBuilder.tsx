@@ -194,12 +194,16 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
   
   const renderStepContent = () => {
     const formData = form.getValues();
-    const isFormValid = !!(user && formData.title && formData.subject && formData.date && formData.questions && formData.questions.length > 0 && form.formState.isValid);
+    const isFormValid = form.formState.isValid;
 
     const getFullExamData = (): Exam | null => {
-        if (!isFormValid || !user) return null;
+        if (!user) return null;
         
         const data = form.getValues();
+        
+        if (!data.title || !data.subject || !data.date || !data.questions || data.questions.length === 0) {
+            return null;
+        }
 
         return {
             id: existingExam?.id || uuidv4(),
@@ -388,7 +392,6 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
         );
          case 3: // Final Review
             const totalWeight = formData.questions.reduce((acc, q) => acc + (Number(q.weight) || 0), 0);
-
             return (
                 <Card>
                     <CardHeader>
@@ -413,7 +416,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                                  </div>
                              ))}
                         </div>
-                        {isClient && fullExamData ? (
+                        {isClient && fullExamData && isFormValid ? (
                           <PDFDownloadLink
                             document={<AnswerSheetPDF exam={fullExamData} />}
                             fileName={`${fullExamData.title.replace(/\s/g, '_')}_gabarito.pdf`}
