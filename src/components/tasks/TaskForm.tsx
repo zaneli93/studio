@@ -49,7 +49,13 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset();
+      form.reset({
+        title: '',
+        description: '',
+        dueDate: undefined,
+        priority: 'medium',
+        category: '',
+      });
     }
     setIsOpen(open);
   }
@@ -73,12 +79,18 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
         toast({ title: 'Tarefa criada com sucesso!' });
       }
       setIsOpen(false);
-      form.reset();
+      form.reset({
+        title: '',
+        description: '',
+        dueDate: undefined,
+        priority: 'medium',
+        category: '',
+      });
     } catch (error) {
       toast({
         variant: 'destructive',
         title: 'Erro',
-        description: `Falha ao ${task ? 'atualizar' : 'criar'} a tarefa.`,
+        description: `Não foi possível salvar a tarefa. Por favor, verifique sua conexão e tente novamente.`,
       });
     }
   }
@@ -199,8 +211,8 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
                 />
             </div>
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancelar</Button>
-              <Button type="submit">{task ? 'Salvar Alterações' : 'Criar Tarefa'}</Button>
+              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>Cancelar</Button>
+              <Button type="submit">{task ? 'Salvar' : 'Salvar'}</Button>
             </DialogFooter>
           </form>
         </Form>

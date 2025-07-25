@@ -1,4 +1,3 @@
-
 'use client';
 import { db, isFirebaseConfigured } from './firebase';
 import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, Timestamp, onSnapshot, type Unsubscribe } from 'firebase/firestore';
@@ -6,16 +5,14 @@ import type { Task } from '@/types';
 
 function getDb() {
     if (!isFirebaseConfigured || !db) {
-        // This will be caught by the server and result in a 500 error.
-        // On the client, this will be caught by the component and an error will be shown.
-        throw new Error("Firestore is not initialized");
+        throw new Error("O Firestore não está inicializado");
     }
     return db;
 }
 
 
-type TaskData = Omit<Task, 'id' | 'createdAt' | 'userId'>;
-type TaskUpdateData = Partial<TaskData>;
+type TaskData = Omit<Task, 'id' | 'createdAt'>;
+type TaskUpdateData = Partial<Omit<Task, 'id'>>;
 
 
 export const onTasksSnapshot = (
@@ -45,21 +42,23 @@ export const onTasksSnapshot = (
             } as Task);
         });
         callback(tasks);
+    }, (error) => {
+        console.error("Erro ao buscar tarefas:", error);
+        // Em um app real, você poderia usar um toast para notificar o usuário.
     });
 
     return unsubscribe;
 };
 
-export const addTask = async (userId: string, task: Omit<Task, 'id' | 'createdAt'| 'userId' | 'completed'>) => {
+export const addTask = async (userId: string, task: Omit<Task, 'id' | 'createdAt'| 'completed'>) => {
     await addDoc(collection(getDb(), 'users', userId, 'tasks'), {
         ...task,
-        userId,
         completed: false,
         createdAt: serverTimestamp(),
     });
 };
 
-export const updateTask = async (userId: string, taskId: string, taskData: Partial<Task>) => {
+export const updateTask = async (userId: string, taskId: string, taskData: TaskUpdateData) => {
     const taskRef = doc(getDb(), 'users', userId, 'tasks', taskId);
     await updateDoc(taskRef, taskData);
 };
@@ -72,13 +71,18 @@ export const deleteTask = async (userId: string, taskId: string) => {
 export const getCategories = async (userId: string): Promise<string[]> => {
     const tasksCollection = collection(getDb(), 'users', userId, 'tasks');
     const q = query(tasksCollection, where('category', '!=', ''));
-    const querySnapshot = await getDocs(q);
-    const categories = new Set<string>();
-    querySnapshot.forEach(doc => {
-        const task = doc.data() as Task;
-        if (task.category) {
-            categories.add(task.category);
-        }
-    });
-    return Array.from(categories);
+    try {
+        const querySnapshot = await getDocs(q);
+        const categories = new Set<string>();
+        querySnapshot.forEach(doc => {
+            const task = doc.data() as Task;
+            if (task.category) {
+                categories.add(task.category);
+            }
+        });
+        return Array.from(categories);
+    } catch(e) {
+        console.error("Erro ao buscar categorias", e)
+        return []
+    }
 };

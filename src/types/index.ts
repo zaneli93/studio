@@ -9,5 +9,4 @@ export interface Task {
   category?: string;
   completed: boolean;
   createdAt: Timestamp;
-  userId: string;
 }
