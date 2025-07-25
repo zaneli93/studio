@@ -33,7 +33,11 @@ import type { Exam } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// NOTE: No static imports from @react-pdf/renderer or AnswerSheetPDF here.
+// Type definition for dynamically imported PDF components
+type PdfComponents = {
+  PDFDownloadLink: typeof import('@react-pdf/renderer').PDFDownloadLink;
+  AnswerSheetPDF: React.FC<{ exam: Exam }>;
+};
 
 export default function ExamsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -44,8 +48,42 @@ export default function ExamsPage() {
   
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [pdfStatus, setPdfStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
-  const [PdfDownloadComponent, setPdfDownloadComponent] = useState<React.ReactNode | null>(null);
+  const [pdfComponents, setPdfComponents] = useState<PdfComponents | null>(null);
+  const [selectedExamForPdf, setSelectedExamForPdf] = useState<Exam | null>(null);
 
+  useEffect(() => {
+    // Pre-load PDF components on the client side after initial mount
+    const loadPdfModules = async () => {
+      try {
+        const [{ PDFDownloadLink, Font }, { default: AnswerSheetPDF }] = await Promise.all([
+          import("@react-pdf/renderer"),
+          import("@/components/exams/AnswerSheetPDF"),
+        ]);
+        
+        // Register fonts once
+        if (Font.getRegisteredFontFamilies().indexOf('Inter') === -1) {
+            Font.register({
+              family: 'Inter',
+              fonts: [
+                { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 400 },
+                { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 500 },
+                { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 700 },
+              ],
+            });
+        }
+        setPdfComponents({ PDFDownloadLink, AnswerSheetPDF: AnswerSheetPDF as React.FC<{ exam: Exam }> });
+      } catch (error) {
+        console.error("Failed to load PDF modules:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Erro ao carregar módulo PDF',
+          description: 'Não será possível gerar PDFs. Recarregue a página.',
+        });
+      }
+    };
+    loadPdfModules();
+  }, [toast]);
+  
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -103,16 +141,15 @@ export default function ExamsPage() {
   const closePdfModal = () => {
     setIsPdfModalOpen(false);
     setPdfStatus('idle');
-    setPdfDownloadComponent(null);
+    setSelectedExamForPdf(null);
   }
   
   const handleGeneratePdf = async (examId: string) => {
-    if (!user) return;
+    if (!user || !pdfComponents) return;
     
     setIsPdfModalOpen(true);
     setPdfStatus('loading');
-    setPdfDownloadComponent(null);
-
+    
     try {
       const exam = await getExamById(user.uid, examId);
       
@@ -129,68 +166,16 @@ export default function ExamsPage() {
       if (process.env.NODE_ENV !== 'production') {
         console.log("[PDF] exam valid:", exam.id);
       }
-
-      // Dynamic import of react-pdf and the AnswerSheetPDF component
-      const [{ PDFDownloadLink, Font }, { default: AnswerSheetPDF }] = await Promise.all([
-        import("@react-pdf/renderer"),
-        import("@/components/exams/AnswerSheetPDF"),
-      ]);
       
-      // Font registration needs to be done on the client side.
-      if (typeof window !== 'undefined' && Font.getRegisteredFontFamilies().indexOf('Inter') === -1) {
-          Font.register({
-            family: 'Inter',
-            fonts: [
-              { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 400 },
-              { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 500 },
-              { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 700 },
-            ],
-          });
-      }
-
-      const downloadComponent = (
-         <PDFDownloadLink
-            document={<AnswerSheetPDF exam={exam} />}
-            fileName={`${exam.title.replace(/\s/g, '_')}_gabarito.pdf`}
-            onError={(e) => {
-              console.error("PDF generation error:", e)
-              toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um erro inesperado. Tente novamente.'});
-              setPdfStatus('error');
-            }}
-            className="w-full"
-          >
-            {({ loading: pdfLoading }) => (
-              <Button disabled={pdfLoading} className="w-full" onClick={() => {
-                  if(!pdfLoading) {
-                    toast({ title: 'Download iniciado!' });
-                    setTimeout(() => closePdfModal(), 1000);
-                  }
-              }}>
-                 {pdfLoading ? (
-                   <>
-                     <LoaderCircle className="animate-spin mr-2" />
-                     Preparando arquivo...
-                   </>
-                 ) : (
-                   <>
-                     <Download className="mr-2" />
-                     Baixar PDF Agora
-                   </>
-                 )}
-              </Button>
-            )}
-          </PDFDownloadLink>
-      );
-      
-      setPdfDownloadComponent(downloadComponent);
+      setSelectedExamForPdf(exam);
       setPdfStatus('ready');
 
     } catch (err) {
        console.error("Error preparing PDF:", err);
        toast({
           variant: 'destructive',
-          title: 'Erro ao carregar componentes',
-          description: 'Não foi possível carregar os módulos do PDF.',
+          title: 'Erro ao buscar dados da prova',
+          description: 'Não foi possível carregar os dados para o PDF.',
        });
        setPdfStatus('error');
     }
@@ -214,9 +199,45 @@ export default function ExamsPage() {
                 </div>
             );
         case 'ready':
-            return PdfDownloadComponent;
+          if (pdfComponents && selectedExamForPdf) {
+            const { PDFDownloadLink, AnswerSheetPDF } = pdfComponents;
+            return (
+               <PDFDownloadLink
+                  document={<AnswerSheetPDF exam={selectedExamForPdf} />}
+                  fileName={`${selectedExamForPdf.title.replace(/\s/g, '_')}_gabarito.pdf`}
+                  onError={(e) => {
+                    console.error("PDF generation error:", e)
+                    toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um erro inesperado. Tente novamente.'});
+                    setPdfStatus('error');
+                  }}
+                  className="w-full"
+                >
+                  {({ loading: pdfLoading }) => (
+                    <Button disabled={pdfLoading} className="w-full" onClick={() => {
+                        if(!pdfLoading) {
+                          toast({ title: 'Download iniciado!' });
+                          setTimeout(() => closePdfModal(), 1000);
+                        }
+                    }}>
+                       {pdfLoading ? (
+                         <>
+                           <LoaderCircle className="animate-spin mr-2" />
+                           Preparando arquivo...
+                         </>
+                       ) : (
+                         <>
+                           <Download className="mr-2" />
+                           Baixar PDF Agora
+                         </>
+                       )}
+                    </Button>
+                  )}
+                </PDFDownloadLink>
+            )
+          }
+          return null; // Fallback
         case 'error':
-             return <p>Ocorreu um erro ao preparar o PDF. Por favor, tente novamente.</p>;
+             return <p>Ocorreu um erro ao preparar o PDF. Por favor, feche e tente novamente.</p>;
         default:
              return null;
      }
@@ -281,7 +302,7 @@ export default function ExamsPage() {
                       variant="ghost" 
                       size="icon" 
                       onClick={() => handleGeneratePdf(exam.id)}
-                      disabled={pdfStatus !== 'idle'}
+                      disabled={!pdfComponents || pdfStatus !== 'idle'}
                       title={"Gerar gabarito PDF"}
                     >
                       <Download className="h-4 w-4" />
@@ -323,7 +344,7 @@ export default function ExamsPage() {
           <DialogHeader>
             <DialogTitle>Gerar Gabarito em PDF</DialogTitle>
             <DialogDescription>
-              Seu gabarito está sendo preparado.
+              Seu gabarito está sendo preparado para download.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center min-h-[10rem]">
