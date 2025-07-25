@@ -194,7 +194,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
   
   const renderStepContent = () => {
     const formData = form.getValues();
-    const isFormValid = user && formData.title && formData.questions && formData.questions.length > 0;
+    const isFormValid = !!(user && formData.title && formData.questions && formData.questions.length > 0 && form.formState.isValid);
   
     // This derived state will be recalculated on every render, ensuring it's up-to-date
     const fullExamData: Exam | null = isFormValid ? {
@@ -408,23 +408,22 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                              ))}
                         </div>
                         {isClient && fullExamData ? (
-                            <PDFDownloadLink
-                                document={<AnswerSheetPDF exam={fullExamData} />}
-                                fileName={`${fullExamData.title.replace(/\s/g, '_')}_gabarito.pdf`}
-                                className="w-full"
-                            >
-                                {({ loading }) => (
-                                    <Button type="button" className="w-full" disabled={loading}>
-                                        {loading ? <LoaderCircle className="mr-2 animate-spin" /> : <Download className="mr-2" />}
-                                        Gerar gabarito PDF
-                                    </Button>
-                                )}
-                            </PDFDownloadLink>
+                          <PDFDownloadLink
+                            document={<AnswerSheetPDF exam={fullExamData} />}
+                            fileName={`${fullExamData.title.replace(/\s/g, '_')}_gabarito.pdf`}
+                          >
+                            {({ loading, url, error, blob }) => (
+                              <Button type="button" className="w-full" disabled={loading}>
+                                {loading ? <LoaderCircle className="mr-2 animate-spin" /> : <Download className="mr-2" />}
+                                Gerar gabarito PDF
+                              </Button>
+                            )}
+                          </PDFDownloadLink>
                         ) : (
-                            <Button type="button" className="w-full" disabled>
-                                <LoaderCircle className="mr-2 animate-spin" />
-                                Carregando dados da prova...
-                            </Button>
+                          <Button type="button" className="w-full" disabled>
+                            <LoaderCircle className="mr-2 animate-spin" />
+                            Carregando dados da prova...
+                          </Button>
                         )}
                     </CardContent>
                 </Card>
@@ -467,3 +466,5 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
     </div>
   );
 }
+
+    
