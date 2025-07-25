@@ -1,24 +1,12 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import { Page, Text, View, Document, StyleSheet, Font, Image } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 import type { Exam } from '@/types';
 import QRCode from 'qrcode';
 
-// Register Inter font - moved to be called dynamically from the parent component
-// to avoid running this on every render.
-/*
-Font.register({
-  family: 'Inter',
-  fonts: [
-    { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 400 },
-    { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 500 },
-    { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 700 },
-  ],
-});
-*/
+// NOTE: Font registration is moved to the parent component (`ExamsPage`)
+// to be called only when dynamically importing this module.
 
-
-// A4 size in points (72 points per inch)
 const A4_WIDTH = 595.28;
 const A4_HEIGHT = 841.89;
 const MARGIN_X = 40;
@@ -143,13 +131,13 @@ interface AnswerSheetPDFProps {
 const AnswerSheetPDF: React.FC<AnswerSheetPDFProps> = ({ exam }) => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
 
-  // Hard guard against undefined props before any hooks
-  if (!exam || !exam.id || !exam.questions || exam.questions.length === 0) {
+  // Hard guard against undefined/invalid props before any hooks
+  if (!exam || !exam.id || !Array.isArray(exam.questions) || exam.questions.length === 0) {
     if (process.env.NODE_ENV !== 'production') {
         console.error("[AnswerSheetPDF] Invalid or empty exam prop received:", exam);
     }
-    // Return null to prevent the renderer from crashing.
-    return null;
+    // Return a valid but empty Document to prevent the renderer from crashing.
+    return <Document><Page size="A4"><Text>Erro: Dados da prova inválidos.</Text></Page></Document>;
   }
 
   useEffect(() => {
@@ -157,7 +145,7 @@ const AnswerSheetPDF: React.FC<AnswerSheetPDFProps> = ({ exam }) => {
       try {
         const qrData = JSON.stringify({
           examId: exam.id,
-          studentId: '<PLACEHOLDER>',
+          studentId: '<PLACEHOLDER>', // This should be replaced with real student ID in a full implementation
         });
         const url = await QRCode.toDataURL(qrData);
         setQrCodeUrl(url);

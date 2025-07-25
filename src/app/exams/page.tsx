@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -35,13 +34,10 @@ import type { Exam } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// REMOVED static imports for react-pdf
+// NOTE: Static imports for react-pdf are removed.
+// They will be imported dynamically.
 // import { PDFDownloadLink } from '@react-pdf/renderer';
 // import AnswerSheetPDF from '@/components/exams/AnswerSheetPDF';
-
-// Componente para o link de download que será renderizado dinamicamente
-let PDFDownloadLink: any = () => null;
-let AnswerSheetPDF: React.FC<{exam: Exam}> = () => null;
 
 export default function ExamsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -53,13 +49,11 @@ export default function ExamsPage() {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [selectedExamForPdf, setSelectedExamForPdf] = useState<Exam | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-  const [pdfComponentsLoaded, setPdfComponentsLoaded] = useState(false);
+  const [pdfReady, setPdfReady] = useState(false);
+  
+  // State to hold the dynamically imported component
+  const [PdfDownloadComponent, setPdfDownloadComponent] = useState<React.ReactNode | null>(null);
 
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -120,7 +114,8 @@ export default function ExamsPage() {
     
     setIsGeneratingPdf(true);
     setIsPdfModalOpen(true);
-    setPdfComponentsLoaded(false);
+    setPdfReady(false);
+    setPdfDownloadComponent(null);
 
     try {
       const exam = await getExamById(user.uid, examId);
@@ -139,18 +134,13 @@ export default function ExamsPage() {
         console.log("[PDF] exam valid:", exam.id);
       }
 
-      // Dynamic import
-      const [{ PDFDownloadLink: pdfLink, Font }, { default: sheet }] = await Promise.all([
+      // Dynamic import of react-pdf and the AnswerSheetPDF component
+      const [{ PDFDownloadLink, Font }, { default: AnswerSheetPDF }] = await Promise.all([
         import("@react-pdf/renderer"),
         import("@/components/exams/AnswerSheetPDF"),
       ]);
 
-      // Assign to component variables
-      PDFDownloadLink = pdfLink;
-      AnswerSheetPDF = sheet;
-
       // Register Inter font if not already registered.
-      // This is a simplified check; a more robust solution might use a global flag.
       if (Font.getRegisteredFontFamilies().indexOf('Inter') === -1) {
           Font.register({
             family: 'Inter',
@@ -162,15 +152,47 @@ export default function ExamsPage() {
           });
       }
 
-      setSelectedExamForPdf(exam);
-      setPdfComponentsLoaded(true);
+      // Create the component to be rendered
+      const downloadComponent = (
+         <PDFDownloadLink
+            document={<AnswerSheetPDF exam={exam} />}
+            fileName={`${exam.title.replace(/\s/g, '_')}_gabarito.pdf`}
+            onError={(e) => {
+              console.error("PDF generation error:", e)
+              toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um erro inesperado. Tente novamente.'})
+            }}
+            className="w-full"
+          >
+            {({ loading: pdfLoading }) => (
+              <Button disabled={pdfLoading} className="w-full" onClick={() => {
+                  toast({ title: 'Download iniciado!' });
+                  setTimeout(() => setIsPdfModalOpen(false), 1000);
+              }}>
+                 {pdfLoading ? (
+                   <>
+                     <LoaderCircle className="animate-spin mr-2" />
+                     Preparando arquivo...
+                   </>
+                 ) : (
+                   <>
+                     <Download className="mr-2" />
+                     Baixar PDF Agora
+                   </>
+                 )}
+              </Button>
+            )}
+          </PDFDownloadLink>
+      );
+      
+      setPdfDownloadComponent(downloadComponent);
+      setPdfReady(true);
 
     } catch (err) {
        console.error("Error preparing PDF:", err);
        toast({
           variant: 'destructive',
-          title: 'Erro ao carregar dados',
-          description: 'Não foi possível buscar os detalhes da prova.',
+          title: 'Erro ao carregar componentes',
+          description: 'Não foi possível carregar os módulos do PDF.',
        });
        setIsPdfModalOpen(false);
     } finally {
@@ -185,6 +207,13 @@ export default function ExamsPage() {
         <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
+  }
+
+  const closePdfModal = () => {
+    setIsPdfModalOpen(false);
+    setSelectedExamForPdf(null);
+    setPdfReady(false);
+    setPdfDownloadComponent(null);
   }
 
   return (
@@ -246,7 +275,7 @@ export default function ExamsPage() {
                       variant="ghost" 
                       size="icon" 
                       onClick={() => handleGeneratePdf(exam.id)}
-                      disabled={isGeneratingPdf}
+                      disabled={isGeneratingPdf && !pdfReady}
                       title={"Baixar gabarito"}
                     >
                       <Download className="h-4 w-4" />
@@ -283,13 +312,7 @@ export default function ExamsPage() {
         </main>
       </div>
 
-      <Dialog open={isPdfModalOpen} onOpenChange={(isOpen) => {
-        if (!isOpen) {
-          setIsPdfModalOpen(false);
-          setSelectedExamForPdf(null);
-          setPdfComponentsLoaded(false);
-        }
-      }}>
+      <Dialog open={isPdfModalOpen} onOpenChange={closePdfModal}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Gerar Gabarito em PDF</DialogTitle>
@@ -298,49 +321,19 @@ export default function ExamsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center min-h-[10rem]">
-            {isGeneratingPdf ? (
+            {(isGeneratingPdf || !pdfReady) ? (
               <div className="flex flex-col items-center gap-2">
-                <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-                <p>Carregando dados da prova...</p>
-              </div>
-            ) : selectedExamForPdf && pdfComponentsLoaded && isClient ? (
-               <PDFDownloadLink
-                  document={<AnswerSheetPDF exam={selectedExamForPdf} />}
-                  fileName={`${selectedExamForPdf.title.replace(/\s/g, '_')}_gabarito.pdf`}
-                  onError={(e) => {
-                    console.error("PDF generation error:", e)
-                    toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um erro inesperado. Tente novamente.'})
-                  }}
-                  className="w-full"
-                >
-                  {({ loading: pdfLoading }) => (
-                    <Button disabled={pdfLoading} className="w-full" onClick={() => {
-                        toast({ title: 'Gabarito gerado com sucesso!' });
-                        setTimeout(() => setIsPdfModalOpen(false), 1000);
-                    }}>
-                       {pdfLoading ? (
-                         <>
-                           <LoaderCircle className="animate-spin mr-2" />
-                           Preparando arquivo...
-                         </>
-                       ) : (
-                         <>
-                           <Download className="mr-2" />
-                           Baixar PDF Agora
-                         </>
-                       )}
-                    </Button>
-                  )}
-                </PDFDownloadLink>
-            ) : (
-               <div className="flex flex-col items-center gap-2">
                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
                 <p>Carregando componentes do PDF...</p>
               </div>
+            ) : pdfReady ? (
+               PdfDownloadComponent
+            ) : (
+               <p>Ocorreu um erro ao preparar o PDF.</p>
             )}
           </div>
           <DialogFooter>
-             <Button variant="ghost" onClick={() => setIsPdfModalOpen(false)}>Fechar</Button>
+             <Button variant="ghost" onClick={closePdfModal}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
