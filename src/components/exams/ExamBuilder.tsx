@@ -164,7 +164,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
     if (!user) return;
     setIsSubmitting(true);
     try {
-      const examPayload = {
+      const examPayload: Omit<Exam, 'id' | 'createdAt' | 'updatedAt'> = {
         userId: user.uid,
         title: data.title,
         subject: data.subject,
@@ -194,27 +194,33 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
   
   const renderStepContent = () => {
     const formData = form.getValues();
-    const isFormValid = !!(user && formData.title && formData.questions && formData.questions.length > 0 && form.formState.isValid);
-  
-    // This derived state will be recalculated on every render, ensuring it's up-to-date
-    const fullExamData: Exam | null = isFormValid ? {
-      id: existingExam?.id || uuidv4(),
-      userId: user.uid,
-      createdAt: existingExam?.createdAt || new Date(),
-      updatedAt: new Date(),
-      title: formData.title,
-      subject: formData.subject,
-      date: formData.date,
-      questions: formData.questions.map(q => ({
-        id: q.id,
-        type: q.type,
-        statement: q.statement,
-        answerKey: q.answerKey,
-        margin: q.margin,
-        weight: q.weight,
-      })),
-    } : null;
+    const isFormValid = !!(user && formData.title && formData.subject && formData.date && formData.questions && formData.questions.length > 0 && form.formState.isValid);
 
+    const getFullExamData = (): Exam | null => {
+        if (!isFormValid || !user) return null;
+        
+        const data = form.getValues();
+
+        return {
+            id: existingExam?.id || uuidv4(),
+            userId: user.uid,
+            title: data.title,
+            subject: data.subject,
+            date: data.date,
+            questions: data.questions.map(q => ({
+                id: q.id,
+                type: q.type,
+                statement: q.statement,
+                answerKey: q.answerKey,
+                margin: q.margin || 0,
+                weight: q.weight,
+            })),
+            createdAt: existingExam?.createdAt || new Date(),
+            updatedAt: new Date(),
+        };
+    };
+    
+    const fullExamData = getFullExamData();
 
     switch (currentStep) {
       case 0: // General Info
@@ -412,7 +418,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                             document={<AnswerSheetPDF exam={fullExamData} />}
                             fileName={`${fullExamData.title.replace(/\s/g, '_')}_gabarito.pdf`}
                           >
-                            {({ loading, url, error, blob }) => (
+                            {({ loading }) => (
                               <Button type="button" className="w-full" disabled={loading}>
                                 {loading ? <LoaderCircle className="mr-2 animate-spin" /> : <Download className="mr-2" />}
                                 Gerar gabarito PDF
@@ -466,5 +472,3 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
     </div>
   );
 }
-
-    
