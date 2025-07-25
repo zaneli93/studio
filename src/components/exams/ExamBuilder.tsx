@@ -21,8 +21,11 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { LoaderCircle, CalendarIcon, PlusCircle, Trash2, ArrowLeft, ArrowRight, Save, FileCheck2 } from 'lucide-react';
+import { LoaderCircle, CalendarIcon, PlusCircle, Trash2, ArrowLeft, ArrowRight, Save, FileCheck2, Download } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import AnswerSheetPDF from './AnswerSheetPDF';
+
 
 const questionSchema = z.object({
   id: z.string(),
@@ -76,6 +79,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const [numberOfQuestions, setNumberOfQuestions] = useState(existingExam?.questions.length || 1);
 
   const form = useForm<ExamFormData>({
@@ -97,6 +101,10 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
     control: form.control,
     name: "questions",
   });
+  
+   useEffect(() => {
+    setIsClient(true);
+  }, []);
   
   useEffect(() => {
     if (existingExam) {
@@ -157,6 +165,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
     setIsSubmitting(true);
     try {
       const examPayload = {
+        userId: user.uid,
         title: data.title,
         subject: data.subject,
         date: data.date,
@@ -351,6 +360,14 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
          case 3: // Final Review
             const formData = form.getValues();
             const totalWeight = formData.questions.reduce((acc, q) => acc + (Number(q.weight) || 0), 0);
+            const fullExamData: Exam = {
+                id: existingExam?.id || uuidv4(),
+                userId: user?.uid || '',
+                createdAt: existingExam?.createdAt || new Date(),
+                updatedAt: new Date(),
+                ...formData
+            }
+
             return (
                 <Card>
                     <CardHeader>
@@ -375,10 +392,25 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                                  </div>
                              ))}
                         </div>
-                        <Button type="button" variant="outline" className="w-full" disabled>
-                           <FileCheck2 className="mr-2"/>
-                            Gerar gabarito PDF (Em breve)
-                        </Button>
+                        {isClient ? (
+                            <PDFDownloadLink
+                                document={<AnswerSheetPDF exam={fullExamData} />}
+                                fileName={`${fullExamData.title.replace(/\s/g, '_')}_gabarito.pdf`}
+                                className="w-full"
+                            >
+                                {({ loading }) => (
+                                    <Button type="button" className="w-full" disabled={loading}>
+                                        {loading ? <LoaderCircle className="mr-2 animate-spin" /> : <Download className="mr-2" />}
+                                        Gerar gabarito PDF
+                                    </Button>
+                                )}
+                            </PDFDownloadLink>
+                        ) : (
+                            <Button type="button" className="w-full" disabled>
+                                <LoaderCircle className="mr-2 animate-spin" />
+                                Carregando gerador de PDF...
+                            </Button>
+                        )}
                     </CardContent>
                 </Card>
             );
@@ -419,5 +451,3 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
     </div>
   );
 }
-
-    
