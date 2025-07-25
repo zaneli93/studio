@@ -6,7 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ListTodo, LogOut } from 'lucide-react';
+import { ListTodo, LogOut, FileText } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +33,7 @@ export default function Header() {
             <ListTodo className="h-6 w-6 text-primary" />
             <span className="font-bold">Task Ticker</span>
           </Link>
-          <nav className="flex items-center gap-4 text-sm">
+          <nav className="flex items-center gap-6 text-sm">
              <Link
               href="/"
               className={cn(
@@ -42,6 +42,17 @@ export default function Header() {
               )}
             >
               Tarefas
+            </Link>
+            <Link
+              href="/exams"
+              className={cn(
+                "transition-colors hover:text-foreground/80",
+                pathname?.startsWith("/exams")
+                  ? "text-foreground"
+                  : "text-foreground/60"
+              )}
+            >
+              Minhas Provas
             </Link>
             <Link
               href="/omr"
