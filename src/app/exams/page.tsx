@@ -27,12 +27,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-
 import { useToast } from '@/hooks/use-toast';
 import { getExamsForUser, deleteExam, duplicateExam, getExamById } from '@/lib/exams';
 import type { Exam } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+
 
 export default function ExamsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -42,8 +42,7 @@ export default function ExamsPage() {
   const { toast } = useToast();
   
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [pdfReady, setPdfReady] = useState(false);
+  const [pdfStatus, setPdfStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [PdfDownloadComponent, setPdfDownloadComponent] = useState<React.ReactNode | null>(null);
 
 
@@ -100,13 +99,18 @@ export default function ExamsPage() {
       toast({ variant: 'destructive', title: 'Erro ao duplicar prova' });
     }
   };
+
+  const closePdfModal = () => {
+    setIsPdfModalOpen(false);
+    setPdfStatus('idle');
+    setPdfDownloadComponent(null);
+  }
   
   const handleGeneratePdf = async (examId: string) => {
     if (!user) return;
     
-    setIsGeneratingPdf(true);
     setIsPdfModalOpen(true);
-    setPdfReady(false);
+    setPdfStatus('loading');
     setPdfDownloadComponent(null);
 
     try {
@@ -118,8 +122,7 @@ export default function ExamsPage() {
           title: 'Não é possível gerar PDF',
           description: 'A prova está incompleta ou não tem questões.',
         });
-        setIsPdfModalOpen(false);
-        setIsGeneratingPdf(false);
+        setPdfStatus('error');
         return;
       }
       
@@ -145,21 +148,23 @@ export default function ExamsPage() {
           });
       }
 
-      // Create the component to be rendered only after modules are loaded
       const downloadComponent = (
          <PDFDownloadLink
             document={<AnswerSheetPDF exam={exam} />}
             fileName={`${exam.title.replace(/\s/g, '_')}_gabarito.pdf`}
             onError={(e) => {
               console.error("PDF generation error:", e)
-              toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um erro inesperado. Tente novamente.'})
+              toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um erro inesperado. Tente novamente.'});
+              setPdfStatus('error');
             }}
             className="w-full"
           >
             {({ loading: pdfLoading }) => (
               <Button disabled={pdfLoading} className="w-full" onClick={() => {
-                  toast({ title: 'Gabarito gerado com sucesso!' });
-                  setTimeout(() => setIsPdfModalOpen(false), 1000);
+                  if(!pdfLoading) {
+                    toast({ title: 'Download iniciado!' });
+                    setTimeout(() => closePdfModal(), 1000);
+                  }
               }}>
                  {pdfLoading ? (
                    <>
@@ -178,7 +183,7 @@ export default function ExamsPage() {
       );
       
       setPdfDownloadComponent(downloadComponent);
-      setPdfReady(true);
+      setPdfStatus('ready');
 
     } catch (err) {
        console.error("Error preparing PDF:", err);
@@ -187,9 +192,7 @@ export default function ExamsPage() {
           title: 'Erro ao carregar componentes',
           description: 'Não foi possível carregar os módulos do PDF.',
        });
-       setIsPdfModalOpen(false);
-    } finally {
-      setIsGeneratingPdf(false);
+       setPdfStatus('error');
     }
   };
 
@@ -202,11 +205,24 @@ export default function ExamsPage() {
     );
   }
 
-  const closePdfModal = () => {
-    setIsPdfModalOpen(false);
-    setPdfReady(false);
-    setPdfDownloadComponent(null);
+  const renderPdfModalContent = () => {
+     switch (pdfStatus) {
+        case 'loading':
+            return (
+                <div className="flex flex-col items-center gap-2">
+                    <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+                    <p>Gerando PDF...</p>
+                </div>
+            );
+        case 'ready':
+            return PdfDownloadComponent;
+        case 'error':
+             return <p>Ocorreu um erro ao preparar o PDF. Por favor, tente novamente.</p>;
+        default:
+             return null;
+     }
   }
+
 
   return (
     <>
@@ -267,7 +283,7 @@ export default function ExamsPage() {
                       variant="ghost" 
                       size="icon" 
                       onClick={() => handleGeneratePdf(exam.id)}
-                      disabled={isGeneratingPdf}
+                      disabled={pdfStatus !== 'idle'}
                       title={"Gerar gabarito PDF"}
                     >
                       <Download className="h-4 w-4" />
@@ -313,19 +329,10 @@ export default function ExamsPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center justify-center min-h-[10rem]">
-            {isGeneratingPdf || !pdfReady ? (
-              <div className="flex flex-col items-center gap-2">
-                <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-                <p>Gerando PDF...</p>
-              </div>
-            ) : pdfReady && PdfDownloadComponent ? (
-               PdfDownloadComponent
-            ) : (
-               <p>Ocorreu um erro ao preparar o PDF.</p>
-            )}
+            {renderPdfModalContent()}
           </div>
           <DialogFooter>
-             <Button variant="ghost" onClick={closePdfModal}>Fechar</Button>
+             <Button variant="outline" onClick={closePdfModal}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
