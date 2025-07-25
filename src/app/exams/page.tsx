@@ -33,6 +33,7 @@ import type { Exam } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
+// NOTE: No static imports from @react-pdf/renderer or AnswerSheetPDF here.
 
 export default function ExamsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -44,7 +45,6 @@ export default function ExamsPage() {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [pdfStatus, setPdfStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [PdfDownloadComponent, setPdfDownloadComponent] = useState<React.ReactNode | null>(null);
-
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -196,7 +196,6 @@ export default function ExamsPage() {
     }
   };
 
-
   if (authLoading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -222,7 +221,6 @@ export default function ExamsPage() {
              return null;
      }
   }
-
 
   return (
     <>
