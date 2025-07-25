@@ -36,6 +36,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
+// Type definition for dynamically imported components
 type PdfComponents = {
   PDFDownloadLink: React.ComponentType<any>;
   AnswerSheetPDF: React.FC<{ exam: Exam }>;
@@ -50,8 +51,16 @@ export default function ExamsPage() {
   
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [pdfStatus, setPdfStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
-  const [pdfComponents, setPdfComponents] = useState<PdfComponents | null>(null);
   const [selectedExamForPdf, setSelectedExamForPdf] = useState<Exam | null>(null);
+  
+  // State to hold the dynamically imported PDF components
+  const [pdfComponents, setPdfComponents] = useState<PdfComponents | null>(null);
+  // Ensure we only try to load components on the client side
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -109,18 +118,17 @@ export default function ExamsPage() {
 
   const closePdfModal = () => {
     setIsPdfModalOpen(false);
-    setPdfStatus('idle');
     setSelectedExamForPdf(null);
+    setPdfStatus('idle');
   }
   
   const handlePdf = async (examId: string) => {
     if (!user || !db) return;
     
-    setPdfStatus('loading');
     setIsPdfModalOpen(true);
+    setPdfStatus('loading');
 
     try {
-      // 1) fetch exam with the correct path
       const examRef = doc(db, 'exams', user.uid, 'items', examId);
       const docSnap = await getDoc(examRef);
       
@@ -130,12 +138,11 @@ export default function ExamsPage() {
           title: 'Prova incompleta',
           description: 'A prova não tem questões ou está incompleta.',
         });
-        closePdfModal();
+        setPdfStatus('error');
         return;
       }
       
       const examData = docSnap.data();
-      // Add id to exam data
       const exam: Exam = {
          id: docSnap.id,
          ...examData,
@@ -144,29 +151,30 @@ export default function ExamsPage() {
          updatedAt: (examData.updatedAt as any).toDate(),
       } as Exam;
 
-      // 2) dynamic imports
-      const [{ PDFDownloadLink, Font }, { default: AnswerSheetPDF }] = await Promise.all([
-        import("@react-pdf/renderer"),
-        import("@/components/exams/AnswerSheetPDF"),
-      ]);
-
-      // Register fonts if needed
-      if (Font.getRegisteredFontFamilies().indexOf('Inter') === -1) {
-        Font.register({
-          family: 'Inter',
-          fonts: [
-            { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 400 },
-            { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 500 },
-            { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 700 },
-          ],
-        });
-      }
-
-      // 3) open modal with Error Boundary
       setSelectedExamForPdf(exam);
-      setPdfComponents({ PDFDownloadLink, AnswerSheetPDF: AnswerSheetPDF as React.FC<{ exam: Exam }> });
+
+      // Dynamically import PDF components if they haven't been loaded yet
+      if (!pdfComponents) {
+        const [{ PDFDownloadLink, Font }, { default: AnswerSheetPDF }] = await Promise.all([
+          import("@react-pdf/renderer"),
+          import("@/components/exams/AnswerSheetPDF"),
+        ]);
+        
+        // Register fonts if needed
+        if (Font.getRegisteredFontFamilies().indexOf('Inter') === -1) {
+            Font.register({
+              family: 'Inter',
+              fonts: [
+                { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 400 },
+                { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 500 },
+                { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 700 },
+              ],
+            });
+        }
+        setPdfComponents({ PDFDownloadLink, AnswerSheetPDF: AnswerSheetPDF as React.FC<{ exam: Exam }> });
+      }
+      
       setPdfStatus('ready');
-      // No need to set isPdfModalOpen(true) again as it's already open
 
     } catch (err) {
       console.error("Error in handlePdf:", err);
@@ -185,60 +193,6 @@ export default function ExamsPage() {
         <LoaderCircle className="h-12 w-12 animate-spin text-primary" />
       </div>
     );
-  }
-
-  const renderPdfModalContent = () => {
-     switch (pdfStatus) {
-        case 'loading':
-            return (
-                <div className="flex flex-col items-center gap-2">
-                    <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-                    <p>Preparando PDF...</p>
-                </div>
-            );
-        case 'ready':
-          if (pdfComponents && selectedExamForPdf) {
-            const { PDFDownloadLink, AnswerSheetPDF } = pdfComponents;
-            return (
-              <ErrorBoundary 
-                fallback={<p>Erro ao gerar PDF</p>}
-                onError={() => toast({ variant: 'destructive', title: 'Erro ao gerar PDF', description: 'Ocorreu um erro inesperado.' })}
-              >
-                <PDFDownloadLink
-                  document={<AnswerSheetPDF exam={selectedExamForPdf} />}
-                  fileName={`${selectedExamForPdf.title.replace(/\s/g, '_')}_gabarito.pdf`}
-                  className="w-full"
-                >
-                  {({ loading: pdfLoading }: { loading: boolean }) => (
-                    <Button disabled={pdfLoading} className="w-full" onClick={() => {
-                        if(!pdfLoading) {
-                          toast({ title: 'Download iniciado!' });
-                          setTimeout(() => closePdfModal(), 1000);
-                        }
-                    }}>
-                       {pdfLoading ? (
-                         <>
-                           <LoaderCircle className="animate-spin mr-2" />
-                           Processando arquivo...
-                         </>
-                       ) : (
-                         <>
-                           <Download className="mr-2" />
-                           Baixar PDF Agora
-                         </>
-                       )}
-                    </Button>
-                  )}
-                </PDFDownloadLink>
-              </ErrorBoundary>
-            )
-          }
-          return null; // Fallback
-        case 'error':
-             return <p className="text-destructive text-center">Ocorreu um erro ao preparar o PDF. Por favor, feche e tente novamente.</p>;
-        default:
-             return null;
-     }
   }
 
   return (
@@ -301,7 +255,7 @@ export default function ExamsPage() {
                       size="icon" 
                       onClick={() => handlePdf(exam.id)}
                       title="PDF"
-                      disabled={pdfStatus === 'loading'}
+                      disabled={!isClient}
                     >
                       <Download className="h-4 w-4" />
                       <span className="sr-only">PDF</span>
@@ -346,7 +300,48 @@ export default function ExamsPage() {
             </DialogDescription>
           </DialogHeader>
             <div className="flex items-center justify-center min-h-[10rem]">
-              {renderPdfModalContent()}
+              {pdfStatus === 'loading' && (
+                  <div className="flex flex-col items-center gap-2">
+                      <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
+                      <p>Preparando PDF...</p>
+                  </div>
+              )}
+              {pdfStatus === 'ready' && isClient && pdfComponents && selectedExamForPdf && (
+                <ErrorBoundary 
+                  fallback={<p>Erro ao renderizar o PDF.</p>}
+                  onError={() => toast({ variant: 'destructive', title: 'Erro de Renderização', description: 'Ocorreu um erro inesperado ao criar o PDF.' })}
+                >
+                  <pdfComponents.PDFDownloadLink
+                    document={<pdfComponents.AnswerSheetPDF exam={selectedExamForPdf} />}
+                    fileName={`${selectedExamForPdf.title.replace(/\s/g, '_')}_gabarito.pdf`}
+                    className="w-full"
+                  >
+                    {({ loading: pdfLoading }: { loading: boolean }) => (
+                      <Button disabled={pdfLoading} className="w-full" onClick={() => {
+                          if(!pdfLoading) {
+                            toast({ title: 'Download iniciado!' });
+                            setTimeout(() => closePdfModal(), 1000);
+                          }
+                      }}>
+                         {pdfLoading ? (
+                           <>
+                             <LoaderCircle className="animate-spin mr-2" />
+                             Processando arquivo...
+                           </>
+                         ) : (
+                           <>
+                             <Download className="mr-2" />
+                             Baixar PDF Agora
+                           </>
+                         )}
+                      </Button>
+                    )}
+                  </pdfComponents.PDFDownloadLink>
+                </ErrorBoundary>
+              )}
+              {pdfStatus === 'error' && (
+                <p className="text-destructive text-center">Ocorreu um erro ao preparar o PDF. Por favor, feche e tente novamente.</p>
+              )}
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={closePdfModal}>Fechar</Button>

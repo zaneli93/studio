@@ -4,7 +4,7 @@ import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/render
 import type { Exam } from '@/types';
 import QRCode from 'qrcode';
 
-// Font registration is now handled by the parent component (`ExamsPage`)
+// Font registration is handled by the parent component (`ExamsPage`)
 // before this component is ever rendered.
 
 const A4_WIDTH = 595.28;
@@ -122,6 +122,11 @@ const styles = StyleSheet.create({
   pageNumber: {
     textAlign: 'center',
   },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    margin: 20,
+  }
 });
 
 interface AnswerSheetPDFProps {
@@ -137,7 +142,13 @@ const AnswerSheetPDF: React.FC<AnswerSheetPDFProps> = ({ exam }) => {
         console.error("[AnswerSheetPDF] Invalid or empty exam prop received:", exam);
     }
     // Return a valid but empty Document to prevent the renderer from crashing.
-    return <Document><Page size="A4"><Text>Erro: Dados da prova inválidos.</Text></Page></Document>;
+    return (
+      <Document>
+        <Page size="A4" style={styles.page}>
+          <Text style={styles.errorText}>Erro: Dados da prova inválidos ou prova incompleta. Não foi possível gerar o PDF.</Text>
+        </Page>
+      </Document>
+    );
   }
 
   useEffect(() => {
