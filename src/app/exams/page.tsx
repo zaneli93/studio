@@ -28,7 +28,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { getExamsForUser, deleteExam, duplicateExam, getExamById } from '@/lib/exams';
+import { getExamsForUser, deleteExam, duplicateExam } from '@/lib/exams';
 import type { Exam } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -116,22 +116,33 @@ export default function ExamsPage() {
   const handlePdf = async (examId: string) => {
     if (!user || !db) return;
     
+    setPdfStatus('loading');
+    setIsPdfModalOpen(true);
+
     try {
-      // 1) fetch exam
-      const docSnap = await getDoc(doc(db, "exams", examId));
-      const examData = docSnap.data() as Exam | undefined;
+      // 1) fetch exam with the correct path
+      const examRef = doc(db, 'exams', user.uid, 'items', examId);
+      const docSnap = await getDoc(examRef);
       
-      if (!examData || !examData.questions?.length) {
+      if (!docSnap.exists() || !docSnap.data().questions?.length) {
         toast({
           variant: 'destructive',
           title: 'Prova incompleta',
           description: 'A prova não tem questões ou está incompleta.',
         });
+        closePdfModal();
         return;
       }
-
+      
+      const examData = docSnap.data();
       // Add id to exam data
-      const exam = { ...examData, id: examId };
+      const exam: Exam = {
+         id: docSnap.id,
+         ...examData,
+         date: (examData.date as any).toDate(),
+         createdAt: (examData.createdAt as any).toDate(),
+         updatedAt: (examData.updatedAt as any).toDate(),
+      } as Exam;
 
       // 2) dynamic imports
       const [{ PDFDownloadLink, Font }, { default: AnswerSheetPDF }] = await Promise.all([
@@ -155,7 +166,7 @@ export default function ExamsPage() {
       setSelectedExamForPdf(exam);
       setPdfComponents({ PDFDownloadLink, AnswerSheetPDF: AnswerSheetPDF as React.FC<{ exam: Exam }> });
       setPdfStatus('ready');
-      setIsPdfModalOpen(true);
+      // No need to set isPdfModalOpen(true) again as it's already open
 
     } catch (err) {
       console.error("Error in handlePdf:", err);
@@ -164,6 +175,7 @@ export default function ExamsPage() {
         title: 'Erro ao gerar PDF',
         description: 'Não foi possível preparar o PDF. Tente novamente.',
       });
+      setPdfStatus('error');
     }
   };
 
@@ -289,6 +301,7 @@ export default function ExamsPage() {
                       size="icon" 
                       onClick={() => handlePdf(exam.id)}
                       title="PDF"
+                      disabled={pdfStatus === 'loading'}
                     >
                       <Download className="h-4 w-4" />
                       <span className="sr-only">PDF</span>
@@ -343,5 +356,3 @@ export default function ExamsPage() {
     </>
   );
 }
-
-    
