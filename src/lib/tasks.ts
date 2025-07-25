@@ -1,7 +1,22 @@
 'use client';
 import { db, isFirebaseConfigured } from './firebase';
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, Timestamp, onSnapshot, type Unsubscribe } from 'firebase/firestore';
-import type { Task } from '@/types';
+import { 
+  collection, 
+  addDoc, 
+  doc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  orderBy, 
+  serverTimestamp, 
+  Timestamp, 
+  onSnapshot, 
+  where,
+  getDocs,
+  type Unsubscribe 
+} from 'firebase/firestore';
+import type { Task, TaskCreate } from '@/types';
+
 
 function getDb() {
     if (!isFirebaseConfigured || !db) {
@@ -10,26 +25,17 @@ function getDb() {
     return db;
 }
 
+const getTasksCollection = (userId: string) => {
+  return collection(getDb(), 'tasks', userId, 'items');
+}
 
-type TaskData = Omit<Task, 'id' | 'createdAt'>;
-type TaskUpdateData = Partial<Omit<Task, 'id'>>;
-
-
-export const onTasksSnapshot = (
+export const subscribeTasks = (
     userId: string, 
-    callback: (tasks: Task[]) => void,
-    filters: { status: string; category: string }
+    callback: (tasks: Task[]) => void
 ): Unsubscribe => {
     
-    let q = query(collection(getDb(), 'users', userId, 'tasks'), orderBy('dueDate', 'asc'));
-
-    if (filters.status === 'incomplete') {
-        q = query(q, where('completed', '==', false));
-    }
-    
-    if (filters.category && filters.category !== 'all') {
-        q = query(q, where('category', '==', filters.category));
-    }
+    const tasksCollection = getTasksCollection(userId);
+    const q = query(tasksCollection, orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
         const tasks: Task[] = [];
@@ -38,38 +44,44 @@ export const onTasksSnapshot = (
             tasks.push({
                 id: doc.id,
                 ...data,
-                dueDate: (data.dueDate as Timestamp).toDate(),
+                dueDate: data.dueDate ? (data.dueDate as Timestamp).toDate() : new Date(),
+                createdAt: data.createdAt ? (data.createdAt as Timestamp).toDate() : new Date(),
+                updatedAt: data.updatedAt ? (data.updatedAt as Timestamp).toDate() : new Date(),
             } as Task);
         });
         callback(tasks);
     }, (error) => {
         console.error("Erro ao buscar tarefas:", error);
-        // Em um app real, você poderia usar um toast para notificar o usuário.
     });
 
     return unsubscribe;
 };
 
-export const addTask = async (userId: string, task: Omit<Task, 'id' | 'createdAt'| 'completed'>) => {
-    await addDoc(collection(getDb(), 'users', userId, 'tasks'), {
+export const createTask = async (userId: string, task: TaskCreate) => {
+    const tasksCollection = getTasksCollection(userId);
+    await addDoc(tasksCollection, {
         ...task,
         completed: false,
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
     });
 };
 
-export const updateTask = async (userId: string, taskId: string, taskData: TaskUpdateData) => {
-    const taskRef = doc(getDb(), 'users', userId, 'tasks', taskId);
-    await updateDoc(taskRef, taskData);
+export const updateTask = async (userId: string, taskId: string, taskData: Partial<TaskCreate>) => {
+    const taskRef = doc(getDb(), 'tasks', userId, 'items', taskId);
+    await updateDoc(taskRef, {
+      ...taskData,
+      updatedAt: serverTimestamp(),
+    });
 };
 
 export const deleteTask = async (userId: string, taskId: string) => {
-    const taskRef = doc(getDb(), 'users', userId, 'tasks', taskId);
+    const taskRef = doc(getDb(), 'tasks', userId, 'items', taskId);
     await deleteDoc(taskRef);
 };
 
 export const getCategories = async (userId: string): Promise<string[]> => {
-    const tasksCollection = collection(getDb(), 'users', userId, 'tasks');
+    const tasksCollection = getTasksCollection(userId);
     const q = query(tasksCollection, where('category', '!=', ''));
     try {
         const querySnapshot = await getDocs(q);

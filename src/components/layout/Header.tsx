@@ -3,25 +3,21 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/AuthContext';
-import { auth } from '@/lib/firebase';
-import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ListTodo, LogOut, User as UserIcon, ScanLine } from 'lucide-react';
+import { ListTodo, LogOut } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 export default function Header() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   const handleSignOut = async () => {
-    if (auth) {
-        await signOut(auth);
-        router.push('/');
-    }
+    await logout();
+    router.push('/');
   };
   
   const getInitials = (email: string | null | undefined) => {
@@ -45,7 +41,7 @@ export default function Header() {
                 pathname === "/" ? "text-foreground" : "text-foreground/60"
               )}
             >
-              Provas
+              Tarefas
             </Link>
             <Link
               href="/omr"

@@ -5,8 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +29,7 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { login } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -41,19 +41,10 @@ export function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    if (!auth) {
-        toast({
-            variant: "destructive",
-            title: "Erro",
-            description: "Firebase não configurado.",
-        });
-        setIsLoading(false);
-        return;
-    }
     try {
-      await signInWithEmailAndPassword(auth, values.email, values.password);
+      await login(values.email, values.password);
       router.push("/");
-      router.refresh(); // to re-trigger auth check on home page
+      router.refresh(); 
     } catch (error: any) {
       toast({
         variant: "destructive",

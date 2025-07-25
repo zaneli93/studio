@@ -1,4 +1,5 @@
 'use client';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -8,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useAuth } from '@/context/AuthContext';
-import { addTask, updateTask } from '@/lib/tasks';
+import { createTask, updateTask } from '@/lib/tasks';
 import { useToast } from '@/hooks/use-toast';
 import type { Task } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -27,8 +28,8 @@ interface TaskFormProps {
 const formSchema = z.object({
   title: z.string().min(1, 'O título da tarefa é obrigatório.'),
   description: z.string().optional(),
-  dueDate: z.date({ required_error: 'A data de conclusão é obrigatória.' }),
-  priority: z.enum(['low', 'medium', 'high']),
+  dueDate: z.date().optional(),
+  priority: z.enum(['low', 'medium', 'high']).default('medium'),
   category: z.string().optional(),
 });
 
@@ -39,23 +40,37 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      title: task?.title || '',
-      description: task?.description || '',
-      dueDate: task?.dueDate || undefined,
-      priority: task?.priority || 'medium',
-      category: task?.category || '',
+      title: '',
+      description: '',
+      dueDate: undefined,
+      priority: 'medium',
+      category: '',
     },
   });
+
+  useEffect(() => {
+    if (task) {
+        form.reset({
+            title: task.title,
+            description: task.description || '',
+            dueDate: task.dueDate,
+            priority: task.priority || 'medium',
+            category: task.category || '',
+        });
+    } else {
+        form.reset({
+            title: '',
+            description: '',
+            dueDate: undefined,
+            priority: 'medium',
+            category: '',
+        });
+    }
+  }, [task, form, isOpen]);
   
   const handleOpenChange = (open: boolean) => {
     if (!open) {
-      form.reset({
-        title: '',
-        description: '',
-        dueDate: undefined,
-        priority: 'medium',
-        category: '',
-      });
+      form.reset();
     }
     setIsOpen(open);
   }
@@ -65,31 +80,24 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
     try {
       const taskData = {
         title: values.title,
-        description: values.description ?? '',
-        dueDate: values.dueDate,
+        description: values.description || null,
+        dueDate: values.dueDate || null,
         priority: values.priority,
-        category: values.category,
+        category: values.category || null,
       };
 
       if (task) {
         await updateTask(user.uid, task.id, taskData);
         toast({ title: 'Tarefa atualizada com sucesso!' });
       } else {
-        await addTask(user.uid, taskData as any);
+        await createTask(user.uid, taskData as any);
         toast({ title: 'Tarefa criada com sucesso!' });
       }
-      setIsOpen(false);
-      form.reset({
-        title: '',
-        description: '',
-        dueDate: undefined,
-        priority: 'medium',
-        category: '',
-      });
+      handleOpenChange(false);
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Erro',
+        title: 'Erro ao salvar tarefa',
         description: `Não foi possível salvar a tarefa. Por favor, verifique sua conexão e tente novamente.`,
       });
     }
@@ -105,7 +113,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormField
               control={form.control}
               name="title"
@@ -162,9 +170,6 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date(new Date().setHours(0,0,0,0))
-                            }
                             initialFocus
                           />
                         </PopoverContent>
@@ -180,7 +185,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Prioridade</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Selecione a prioridade" />
@@ -212,7 +217,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
             </div>
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>Cancelar</Button>
-              <Button type="submit">{task ? 'Salvar' : 'Salvar'}</Button>
+              <Button type="submit">{task ? 'Salvar Alterações' : 'Criar Tarefa'}</Button>
             </DialogFooter>
           </form>
         </Form>

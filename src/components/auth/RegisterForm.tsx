@@ -5,8 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 import { Button } from "@/components/ui/button";
@@ -27,9 +26,10 @@ const formSchema = z.object({
 });
 
 export function RegisterForm() {
-  const [isLoading, setIsLoading] =useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+  const { signup } = useAuth();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -41,24 +41,19 @@ export function RegisterForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    if (!auth) {
-        toast({
-            variant: "destructive",
-            title: "Erro",
-            description: "Firebase não configurado.",
-        });
-        setIsLoading(false);
-        return;
-    }
     try {
-      await createUserWithEmailAndPassword(auth, values.email, values.password);
+      await signup(values.email, values.password);
       router.push("/");
       router.refresh();
     } catch (error: any) {
+       let description = "Ocorreu um erro desconhecido.";
+       if (error.code === 'auth/email-already-in-use') {
+           description = "Este e-mail já está em uso por outra conta."
+       }
       toast({
         variant: "destructive",
         title: "Falha no cadastro",
-        description: error.message,
+        description: description,
       });
     } finally {
       setIsLoading(false);

@@ -34,8 +34,8 @@ export default function DeleteTaskDialog({ isOpen, setIsOpen, taskId }: DeleteTa
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Erro',
-        description: 'Falha ao excluir a tarefa.',
+        title: 'Erro ao excluir tarefa',
+        description: 'Não foi possível excluir a tarefa.',
       });
     }
   };
@@ -44,15 +44,15 @@ export default function DeleteTaskDialog({ isOpen, setIsOpen, taskId }: DeleteTa
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
+          <AlertDialogTitle>Tem certeza que deseja excluir esta tarefa?</AlertDialogTitle>
           <AlertDialogDescription>
-            Esta ação não pode ser desfeita. Isso excluirá permanentemente sua tarefa.
+            Esta ação não pode ser desfeita. Isso excluirá permanentemente sua tarefa dos nossos servidores.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction asChild>
-            <Button variant="destructive" onClick={handleDelete}>Continuar</Button>
+            <Button variant="destructive" onClick={handleDelete}>Excluir</Button>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

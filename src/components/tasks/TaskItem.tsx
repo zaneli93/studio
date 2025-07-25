@@ -40,6 +40,9 @@ export default function TaskItem({ task }: TaskItemProps) {
     if (!user) return;
     try {
       await updateTask(user.uid, task.id, { completed: !task.completed });
+      toast({
+          title: `Tarefa ${!task.completed ? 'concluída' : 'marcada como pendente'}!`,
+      });
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -60,6 +63,7 @@ export default function TaskItem({ task }: TaskItemProps) {
                 checked={task.completed}
                 onCheckedChange={handleToggleComplete}
                 className="h-5 w-5"
+                aria-label={task.completed ? "Marcar como pendente" : "Marcar como concluída"}
                />
                <CardTitle className={cn('text-lg', task.completed && 'line-through text-muted-foreground')}>
                 {task.title}
@@ -76,17 +80,21 @@ export default function TaskItem({ task }: TaskItemProps) {
               </Button>
             </div>
           </div>
-          <CardDescription className={cn(task.completed && 'line-through text-muted-foreground/80')}>
-            {task.description}
-          </CardDescription>
+          {task.description && (
+            <CardDescription className={cn('pt-2', task.completed && 'line-through text-muted-foreground/80')}>
+                {task.description}
+            </CardDescription>
+          )}
         </CardHeader>
         <CardContent className="flex-grow">
-            <div className="text-sm text-muted-foreground flex items-center">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                Vence em: {format(task.dueDate, 'PPP')}
-            </div>
+            {task.dueDate && (
+                <div className="text-sm text-muted-foreground flex items-center">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    Vence em: {format(task.dueDate, 'PPP')}
+                </div>
+            )}
         </CardContent>
-        <CardFooter className="flex justify-between">
+        <CardFooter className="flex justify-between items-center">
             <div>
               {task.category && <Badge variant="outline">{task.category}</Badge>}
             </div>
