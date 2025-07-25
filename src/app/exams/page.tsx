@@ -158,7 +158,7 @@ export default function ExamsPage() {
           >
             {({ loading: pdfLoading }) => (
               <Button disabled={pdfLoading} className="w-full" onClick={() => {
-                  toast({ title: 'Download iniciado!' });
+                  toast({ title: 'Gabarito gerado com sucesso!' });
                   setTimeout(() => setIsPdfModalOpen(false), 1000);
               }}>
                  {pdfLoading ? (
@@ -268,10 +268,10 @@ export default function ExamsPage() {
                       size="icon" 
                       onClick={() => handleGeneratePdf(exam.id)}
                       disabled={isGeneratingPdf}
-                      title={"Baixar gabarito"}
+                      title={"Gerar gabarito PDF"}
                     >
                       <Download className="h-4 w-4" />
-                      <span className="sr-only">Baixar gabarito</span>
+                      <span className="sr-only">Gerar gabarito PDF</span>
                     </Button>
                     
                     <AlertDialog>
@@ -316,7 +316,7 @@ export default function ExamsPage() {
             {isGeneratingPdf || !pdfReady ? (
               <div className="flex flex-col items-center gap-2">
                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-                <p>Carregando componentes do PDF...</p>
+                <p>Gerando PDF...</p>
               </div>
             ) : pdfReady && PdfDownloadComponent ? (
                PdfDownloadComponent
