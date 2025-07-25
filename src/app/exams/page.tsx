@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -46,7 +47,11 @@ export default function ExamsPage() {
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [selectedExamForPdf, setSelectedExamForPdf] = useState<Exam | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -256,7 +261,7 @@ export default function ExamsPage() {
                 <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
                 <p>Carregando dados da prova...</p>
               </div>
-            ) : selectedExamForPdf ? (
+            ) : selectedExamForPdf && isClient ? (
                <PDFDownloadLink
                   document={<AnswerSheetPDF exam={selectedExamForPdf} />}
                   fileName={`${selectedExamForPdf.title.replace(/\s/g, '_')}_gabarito.pdf`}
