@@ -33,6 +33,11 @@ export default function ExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -153,7 +158,7 @@ export default function ExamsPage() {
                       <span className="sr-only">Editar</span>
                     </Link>
                   </Button>
-                   {isExamValidForPdf(exam) ? (
+                   {isClient && isExamValidForPdf(exam) ? (
                     <PDFDownloadLink
                       document={<AnswerSheetPDF exam={exam} />}
                       fileName={`${exam.title.replace(/\s/g, '_')}_gabarito.pdf`}
@@ -167,7 +172,7 @@ export default function ExamsPage() {
                       )}
                     </PDFDownloadLink>
                    ) : (
-                      <Button variant="ghost" size="icon" disabled title="Prova sem questões">
+                      <Button variant="ghost" size="icon" disabled title={isExamValidForPdf(exam) ? "Gerando PDF..." : "Prova sem questões"}>
                         <Download className="h-4 w-4" />
                         <span className="sr-only">Prova sem questões</span>
                       </Button>
