@@ -166,6 +166,7 @@ const AnswerSheetPDF: React.FC<AnswerSheetPDFProps> = ({ exam }) => {
 
   const objectiveQuestions = exam.questions.filter(q => q.type === 'objective');
   const otherQuestions = exam.questions.filter(q => q.type !== 'objective');
+  const examDate = exam.date ? new Date(exam.date).toLocaleDateString('pt-BR') : 'Data não definida';
 
   return (
     <Document>
@@ -180,7 +181,7 @@ const AnswerSheetPDF: React.FC<AnswerSheetPDFProps> = ({ exam }) => {
         <View style={styles.header} fixed>
           <Text style={styles.title}>{exam.title}</Text>
           <Text style={styles.subtitle}>{exam.subject}</Text>
-          <Text style={styles.subtitle}>Data: {new Date(exam.date).toLocaleDateString('pt-BR')}</Text>
+          <Text style={styles.subtitle}>Data: {examDate}</Text>
           <Text style={styles.studentName}>Nome do Aluno:</Text>
         </View>
 

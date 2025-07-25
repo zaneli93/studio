@@ -19,6 +19,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+
 import { useToast } from '@/hooks/use-toast';
 import { getExamsForUser, deleteExam, duplicateExam } from '@/lib/exams';
 import type { Exam } from '@/types';
@@ -33,6 +41,7 @@ export default function ExamsPage() {
   const [exams, setExams] = useState<Exam[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -144,42 +153,46 @@ export default function ExamsPage() {
                 </CardHeader>
                 <CardContent className="flex-grow">
                   <p className="text-sm text-muted-foreground">
-                    Data: {format(exam.date, 'PPP', { locale: ptBR })}
+                    Data: {exam.date ? format(new Date(exam.date), 'PPP', { locale: ptBR }) : 'Data não definida'}
                   </p>
                 </CardContent>
                 <CardFooter className="flex justify-end gap-2">
-                   <Button variant="ghost" size="icon" onClick={() => handleDuplicate(exam.id)}>
+                   <Button variant="ghost" size="icon" onClick={() => handleDuplicate(exam.id)} title="Duplicar">
                     <Copy className="h-4 w-4" />
                     <span className="sr-only">Duplicar</span>
                   </Button>
-                   <Button variant="ghost" size="icon" asChild>
+                   <Button variant="ghost" size="icon" asChild title="Editar">
                     <Link href={`/exams/edit/${exam.id}`}>
                       <Edit className="h-4 w-4" />
                       <span className="sr-only">Editar</span>
                     </Link>
                   </Button>
-                   {isClient && isExamValidForPdf(exam) ? (
-                    <PDFDownloadLink
-                      document={<AnswerSheetPDF exam={exam} />}
-                      fileName={`${exam.title.replace(/\s/g, '_')}_gabarito.pdf`}
-                      onError={() => toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um erro inesperado. Tente novamente.'})}
-                    >
-                      {({ loading }) => (
-                        <Button variant="ghost" size="icon" disabled={loading} title="Baixar gabarito">
-                           {loading ? <LoaderCircle className="animate-spin" /> : <Download className="h-4 w-4" />}
-                           <span className="sr-only">Baixar gabarito</span>
-                        </Button>
-                      )}
-                    </PDFDownloadLink>
-                   ) : (
-                      <Button variant="ghost" size="icon" disabled title={isExamValidForPdf(exam) ? "Gerando PDF..." : "Prova sem questões"}>
-                        <Download className="h-4 w-4" />
-                        <span className="sr-only">Prova sem questões</span>
-                      </Button>
+                   
+                   {isClient && (
+                      isExamValidForPdf(exam) ? (
+                        <PDFDownloadLink
+                          document={<AnswerSheetPDF exam={exam} />}
+                          fileName={`${exam.title.replace(/\s/g, '_')}_gabarito.pdf`}
+                          onError={() => toast({ variant: 'destructive', title: 'Erro ao Gerar PDF', description: 'Ocorreu um erro inesperado. Tente novamente.'})}
+                        >
+                          {({ loading }) => (
+                            <Button variant="ghost" size="icon" disabled={loading} title="Baixar gabarito">
+                               {loading ? <LoaderCircle className="animate-spin" /> : <Download className="h-4 w-4" />}
+                               <span className="sr-only">Baixar gabarito</span>
+                            </Button>
+                          )}
+                        </PDFDownloadLink>
+                      ) : (
+                         <Button variant="ghost" size="icon" disabled title="Prova sem questões para gerar gabarito">
+                           <Download className="h-4 w-4" />
+                           <span className="sr-only">Prova sem questões</span>
+                         </Button>
+                      )
                    )}
+                  
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" title="Excluir">
                         <Trash2 className="h-4 w-4" />
                          <span className="sr-only">Excluir</span>
                       </Button>
