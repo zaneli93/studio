@@ -18,6 +18,13 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config, { isServer }) => {
+    // For web workers
+    if (!isServer) {
+        config.output.publicPath = '/_next/';
+    }
+    return config;
+  }
 };
 
 export default nextConfig;

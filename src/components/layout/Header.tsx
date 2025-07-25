@@ -8,11 +8,14 @@ import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ListTodo, LogOut, User as UserIcon } from 'lucide-react';
+import { ListTodo, LogOut, User as UserIcon, ScanLine } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 export default function Header() {
   const { user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleSignOut = async () => {
     if (auth) {
@@ -34,6 +37,28 @@ export default function Header() {
             <ListTodo className="h-6 w-6 text-primary" />
             <span className="font-bold">Task Ticker</span>
           </Link>
+          <nav className="flex items-center gap-4 text-sm">
+             <Link
+              href="/"
+              className={cn(
+                "transition-colors hover:text-foreground/80",
+                pathname === "/" ? "text-foreground" : "text-foreground/60"
+              )}
+            >
+              Provas
+            </Link>
+            <Link
+              href="/omr"
+              className={cn(
+                "transition-colors hover:text-foreground/80",
+                pathname?.startsWith("/omr")
+                  ? "text-foreground"
+                  : "text-foreground/60"
+              )}
+            >
+              Correção
+            </Link>
+          </nav>
         </div>
         <div className="flex flex-1 items-center justify-end space-x-2">
           {user ? (
