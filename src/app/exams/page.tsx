@@ -33,9 +33,8 @@ import type { Exam } from '@/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
-// Type definition for dynamically imported PDF components
 type PdfComponents = {
-  PDFDownloadLink: typeof import('@react-pdf/renderer').PDFDownloadLink;
+  PDFDownloadLink: React.ComponentType<any>;
   AnswerSheetPDF: React.FC<{ exam: Exam }>;
 };
 
@@ -50,40 +49,12 @@ export default function ExamsPage() {
   const [pdfStatus, setPdfStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
   const [pdfComponents, setPdfComponents] = useState<PdfComponents | null>(null);
   const [selectedExamForPdf, setSelectedExamForPdf] = useState<Exam | null>(null);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
-    // Pre-load PDF components on the client side after initial mount
-    const loadPdfModules = async () => {
-      try {
-        const [{ PDFDownloadLink, Font }, { default: AnswerSheetPDF }] = await Promise.all([
-          import("@react-pdf/renderer"),
-          import("@/components/exams/AnswerSheetPDF"),
-        ]);
-        
-        // Register fonts once
-        if (Font.getRegisteredFontFamilies().indexOf('Inter') === -1) {
-            Font.register({
-              family: 'Inter',
-              fonts: [
-                { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 400 },
-                { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 500 },
-                { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 700 },
-              ],
-            });
-        }
-        setPdfComponents({ PDFDownloadLink, AnswerSheetPDF: AnswerSheetPDF as React.FC<{ exam: Exam }> });
-      } catch (error) {
-        console.error("Failed to load PDF modules:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Erro ao carregar módulo PDF',
-          description: 'Não será possível gerar PDFs. Recarregue a página.',
-        });
-      }
-    };
-    loadPdfModules();
-  }, [toast]);
-  
+    setIsClient(true);
+  }, []);
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
@@ -145,7 +116,7 @@ export default function ExamsPage() {
   }
   
   const handleGeneratePdf = async (examId: string) => {
-    if (!user || !pdfComponents) return;
+    if (!user) return;
     
     setIsPdfModalOpen(true);
     setPdfStatus('loading');
@@ -167,6 +138,21 @@ export default function ExamsPage() {
         console.log("[PDF] exam valid:", exam.id);
       }
       
+      const { PDFDownloadLink, Font } = await import('@react-pdf/renderer');
+      const { default: AnswerSheetPDF } = await import('@/components/exams/AnswerSheetPDF');
+
+      if (Font.getRegisteredFontFamilies().indexOf('Inter') === -1) {
+        Font.register({
+          family: 'Inter',
+          fonts: [
+            { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 400 },
+            { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 500 },
+            { src: 'https://fonts.gstatic.com/s/inter/v12/UcC73FwrK3iLTeHuS_fvQtMwCp50KnMa.woff', fontWeight: 700 },
+          ],
+        });
+      }
+
+      setPdfComponents({ PDFDownloadLink, AnswerSheetPDF: AnswerSheetPDF as React.FC<{ exam: Exam }> });
       setSelectedExamForPdf(exam);
       setPdfStatus('ready');
 
@@ -174,8 +160,8 @@ export default function ExamsPage() {
        console.error("Error preparing PDF:", err);
        toast({
           variant: 'destructive',
-          title: 'Erro ao buscar dados da prova',
-          description: 'Não foi possível carregar os dados para o PDF.',
+          title: 'Erro ao preparar o PDF',
+          description: 'Não foi possível carregar os módulos ou dados para o PDF.',
        });
        setPdfStatus('error');
     }
@@ -195,7 +181,7 @@ export default function ExamsPage() {
             return (
                 <div className="flex flex-col items-center gap-2">
                     <LoaderCircle className="h-8 w-8 animate-spin text-primary" />
-                    <p>Gerando PDF...</p>
+                    <p>Preparando PDF...</p>
                 </div>
             );
         case 'ready':
@@ -222,7 +208,7 @@ export default function ExamsPage() {
                        {pdfLoading ? (
                          <>
                            <LoaderCircle className="animate-spin mr-2" />
-                           Preparando arquivo...
+                           Processando arquivo...
                          </>
                        ) : (
                          <>
@@ -237,7 +223,7 @@ export default function ExamsPage() {
           }
           return null; // Fallback
         case 'error':
-             return <p>Ocorreu um erro ao preparar o PDF. Por favor, feche e tente novamente.</p>;
+             return <p className="text-destructive text-center">Ocorreu um erro ao preparar o PDF. Por favor, feche e tente novamente.</p>;
         default:
              return null;
      }
@@ -302,7 +288,7 @@ export default function ExamsPage() {
                       variant="ghost" 
                       size="icon" 
                       onClick={() => handleGeneratePdf(exam.id)}
-                      disabled={!pdfComponents || pdfStatus !== 'idle'}
+                      disabled={!isClient || pdfStatus === 'loading'}
                       title={"Gerar gabarito PDF"}
                     >
                       <Download className="h-4 w-4" />
@@ -339,22 +325,26 @@ export default function ExamsPage() {
         </main>
       </div>
 
-      <Dialog open={isPdfModalOpen} onOpenChange={closePdfModal}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Gerar Gabarito em PDF</DialogTitle>
-            <DialogDescription>
-              Seu gabarito está sendo preparado para download.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center justify-center min-h-[10rem]">
-            {renderPdfModalContent()}
-          </div>
-          <DialogFooter>
-             <Button variant="outline" onClick={closePdfModal}>Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {isClient && (
+        <Dialog open={isPdfModalOpen} onOpenChange={closePdfModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Gerar Gabarito em PDF</DialogTitle>
+              <DialogDescription>
+                Seu gabarito está sendo preparado para download.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center justify-center min-h-[10rem]">
+              {renderPdfModalContent()}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={closePdfModal}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
+
+    
