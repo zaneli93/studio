@@ -26,11 +26,35 @@ import { v4 as uuidv4 } from 'uuid';
 
 const questionSchema = z.object({
   id: z.string(),
-  type: z.enum(['objective', 'discursive', 'numeric']),
-  statement: z.string().min(1, 'O enunciado é obrigatório.'),
+  type: z.enum(['objective', 'discursive', 'numeric'], { required_error: 'Selecione o tipo da questão.' }),
+  statement: z.string().min(1, 'Enunciado não pode ficar em branco.'),
   answerKey: z.string().min(1, 'A resposta é obrigatória.'),
   margin: z.coerce.number().optional(),
-  weight: z.coerce.number().min(0.1, 'O peso deve ser maior que zero.'),
+  weight: z.coerce.number().min(0.1, 'Peso deve ser maior que zero.'),
+}).refine(data => {
+    if (data.type === 'objective') {
+        return ['A', 'B', 'C', 'D', 'E'].includes(data.answerKey);
+    }
+    return true;
+}, {
+    message: 'Selecione a alternativa correta.',
+    path: ['answerKey'],
+}).refine(data => {
+    if (data.type === 'discursive') {
+        return data.answerKey.trim().length > 0;
+    }
+    return true;
+}, {
+    message: 'Informe a resposta modelo.',
+    path: ['answerKey'],
+}).refine(data => {
+    if (data.type === 'numeric') {
+        return !isNaN(parseFloat(data.answerKey));
+    }
+    return true;
+}, {
+    message: 'Informe o valor correto.',
+    path: ['answerKey'],
 });
 
 const formSchema = z.object({
@@ -77,8 +101,11 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
   useEffect(() => {
     if (existingExam) {
        setNumberOfQuestions(existingExam.questions.length);
+       // The existing exam data is already set as defaultValues
     } else {
-        const initialQuestions = Array.from({ length: numberOfQuestions }, () => ({
+      const currentQuestions = form.getValues('questions');
+      if (numberOfQuestions > currentQuestions.length) {
+        const questionsToAdd = Array.from({ length: numberOfQuestions - currentQuestions.length }, () => ({
             id: uuidv4(),
             type: 'objective',
             statement: '',
@@ -86,9 +113,12 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
             margin: 0,
             weight: 1,
         } as Question));
-        replace(initialQuestions);
+        append(questionsToAdd);
+      } else if (numberOfQuestions < currentQuestions.length) {
+         replace(currentQuestions.slice(0, numberOfQuestions));
+      }
     }
-  }, [numberOfQuestions, replace, existingExam]);
+  }, [numberOfQuestions, append, replace, form, existingExam]);
   
   const handleNumberOfQuestionsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let num = parseInt(e.target.value, 10);
@@ -102,8 +132,21 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
      if (currentStep === 0) {
        isValid = await form.trigger(['title', 'subject', 'date']);
      } else if (currentStep === 1) {
-       // Step 2 (questions list) just proceeds
+       const questions = form.getValues('questions');
+       if (questions.length !== numberOfQuestions) {
+          toast({ variant: 'destructive', title: 'Atenção', description: `A prova deve ter ${numberOfQuestions} questões. Por favor, ajuste a lista.` });
+          return;
+       }
        isValid = true;
+     } else if (currentStep === 2) {
+        isValid = await form.trigger('questions');
+         if (!isValid) {
+            toast({
+                variant: 'destructive',
+                title: 'Campos Inválidos',
+                description: 'Preencha todos os campos obrigatórios antes de avançar.',
+            });
+        }
      }
      if (isValid) setCurrentStep(s => s + 1);
   };
@@ -197,7 +240,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
               <FormItem>
                 <FormLabel>Número de Questões</FormLabel>
                 <FormControl>
-                  <Input type="number" min="1" value={numberOfQuestions} onChange={handleNumberOfQuestionsChange} />
+                  <Input type="number" min="1" max="100" value={numberOfQuestions} onChange={handleNumberOfQuestionsChange} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -216,7 +259,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                 <Card key={field.id} className="p-4 bg-muted/30">
                   <div className="flex justify-between items-center mb-4">
                     <h4 className="font-bold">Questão {index + 1}</h4>
-                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="text-destructive hover:text-destructive">
+                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="text-destructive hover:text-destructive">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -224,14 +267,19 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                      <FormField name={`questions.${index}.type`} control={form.control} render={({ field }) => (
                         <FormItem>
                           <FormLabel>Tipo</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                          <Select onValueChange={(value) => {
+                              field.onChange(value);
+                              // Reset answer key when type changes
+                              form.setValue(`questions.${index}.answerKey`, value === 'objective' ? 'A' : '');
+                          }} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Selecione o tipo"/></SelectTrigger></FormControl>
                             <SelectContent>
                               <SelectItem value="objective">Objetiva</SelectItem>
                               <SelectItem value="discursive">Dissertativa</SelectItem>
                               <SelectItem value="numeric">Numérica</SelectItem>
                             </SelectContent>
                           </Select>
+                          <FormMessage />
                         </FormItem>
                       )} />
                       <FormField name={`questions.${index}.weight`} control={form.control} render={({ field }) => (
@@ -255,7 +303,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                         <FormItem className="mt-4">
                           <FormLabel>Resposta Correta</FormLabel>
                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Selecione a alternativa correta"/></SelectTrigger></FormControl>
                             <SelectContent>
                               <SelectItem value="A">A</SelectItem>
                               <SelectItem value="B">B</SelectItem>
@@ -272,7 +320,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                      <FormField name={`questions.${index}.answerKey`} control={form.control} render={({ field }) => (
                         <FormItem className="mt-4">
                           <FormLabel>Gabarito / Resposta Modelo</FormLabel>
-                          <FormControl><Textarea placeholder="Digite a resposta esperada ou um modelo de gabarito." {...field} /></FormControl>
+                          <FormControl><Textarea placeholder="Informe a resposta modelo." {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
@@ -282,14 +330,14 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                         <FormField name={`questions.${index}.answerKey`} control={form.control} render={({ field }) => (
                             <FormItem>
                               <FormLabel>Resposta Numérica</FormLabel>
-                              <FormControl><Input type="number" {...field} /></FormControl>
+                              <FormControl><Input type="number" placeholder="Informe o valor correto" {...field} /></FormControl>
                                <FormMessage />
                             </FormItem>
                           )} />
                          <FormField name={`questions.${index}.margin`} control={form.control} render={({ field }) => (
                             <FormItem>
                               <FormLabel>Margem de Erro (+/-)</FormLabel>
-                              <FormControl><Input type="number" {...field} /></FormControl>
+                              <FormControl><Input type="number" placeholder="Opcional" {...field} /></FormControl>
                                <FormMessage />
                             </FormItem>
                           )} />
@@ -302,6 +350,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
         );
          case 3: // Final Review
             const formData = form.getValues();
+            const totalWeight = formData.questions.reduce((acc, q) => acc + (Number(q.weight) || 0), 0);
             return (
                 <Card>
                     <CardHeader>
@@ -309,13 +358,14 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                         <CardDescription>Confira todos os dados antes de salvar.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="space-y-2 p-4 border rounded-lg">
+                        <div className="space-y-2 p-4 border rounded-lg bg-muted/50">
                            <h4 className="font-bold text-lg">{formData.title}</h4>
                            <p><span className="font-semibold">Disciplina/Turma:</span> {formData.subject}</p>
                            <p><span className="font-semibold">Data:</span> {format(formData.date, 'PPP', { locale: ptBR })}</p>
                            <p><span className="font-semibold">Total de Questões:</span> {formData.questions.length}</p>
+                           <p><span className="font-semibold">Nota Máxima (Soma dos Pesos):</span> {totalWeight.toFixed(1)}</p>
                         </div>
-                        <div className="space-y-4">
+                        <div className="space-y-4 max-h-[40vh] overflow-y-auto pr-2">
                              <h4 className="font-bold">Questões:</h4>
                              {formData.questions.map((q, i) => (
                                  <div key={q.id} className="p-3 border rounded-md bg-muted/40">
@@ -325,7 +375,7 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
                                  </div>
                              ))}
                         </div>
-                        <Button type="button" variant="outline" className="w-full">
+                        <Button type="button" variant="outline" className="w-full" disabled>
                            <FileCheck2 className="mr-2"/>
                             Gerar gabarito PDF (Em breve)
                         </Button>
@@ -341,7 +391,9 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
       <main className="flex-1 container mx-auto p-4 md:p-8">
         <FormProvider {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            {renderStepContent()}
+            <div className="min-h-[60vh]">
+                {renderStepContent()}
+            </div>
             <div className="flex justify-between mt-8">
               {currentStep > 0 ? (
                 <Button type="button" variant="outline" onClick={prevStep}>
@@ -368,7 +420,4 @@ export default function ExamBuilder({ existingExam }: ExamBuilderProps) {
   );
 }
 
-// Add uuid dependency if not already present
-// npm install uuid @types/uuid
-// Since we can't run npm install, let's assume it's available.
-// If not, we might need to add it to package.json
+    
