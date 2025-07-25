@@ -22,8 +22,8 @@ import { Input } from "@/components/ui/input";
 import { LoaderCircle } from "lucide-react";
 
 const formSchema = z.object({
-  email: z.string().email({ message: "Please enter a valid email." }),
-  password: z.string().min(1, { message: "Password is required." }),
+  email: z.string().email({ message: "Por favor, insira um e-mail válido." }),
+  password: z.string().min(1, { message: "A senha é obrigatória." }),
 });
 
 export function LoginForm() {
@@ -44,8 +44,8 @@ export function LoginForm() {
     if (!auth) {
         toast({
             variant: "destructive",
-            title: "Error",
-            description: "Firebase not configured.",
+            title: "Erro",
+            description: "Firebase não configurado.",
         });
         setIsLoading(false);
         return;
@@ -57,8 +57,8 @@ export function LoginForm() {
     } catch (error: any) {
       toast({
         variant: "destructive",
-        title: "Login failed",
-        description: error.message,
+        title: "Falha no login",
+        description: "E-mail ou senha incorretos.",
       });
     } finally {
       setIsLoading(false);
@@ -73,9 +73,9 @@ export function LoginForm() {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>E-mail</FormLabel>
               <FormControl>
-                <Input placeholder="name@example.com" {...field} />
+                <Input placeholder="nome@exemplo.com" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -86,7 +86,7 @@ export function LoginForm() {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Password</FormLabel>
+              <FormLabel>Senha</FormLabel>
               <FormControl>
                 <Input type="password" placeholder="********" {...field} />
               </FormControl>
@@ -96,7 +96,7 @@ export function LoginForm() {
         />
         <Button type="submit" className="w-full" disabled={isLoading}>
           {isLoading && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
-          Sign In
+          Entrar
         </Button>
       </form>
     </Form>

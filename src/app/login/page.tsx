@@ -11,10 +11,10 @@ export default function LoginPage() {
           <div className="flex flex-col space-y-2 text-center">
             <ListTodo className="mx-auto h-8 w-8" />
             <h1 className="text-2xl font-semibold tracking-tight">
-              Welcome back
+              Bem-vindo de volta
             </h1>
             <p className="text-sm text-muted-foreground">
-              Enter your credentials to access your account
+              Entre com suas credenciais para acessar sua conta
             </p>
           </div>
           <LoginForm />
@@ -23,7 +23,7 @@ export default function LoginPage() {
               href="/register"
               className="hover:text-brand underline underline-offset-4"
             >
-              Don&apos;t have an account? Sign Up
+              Não tem uma conta? Cadastre-se
             </Link>
           </p>
         </div>

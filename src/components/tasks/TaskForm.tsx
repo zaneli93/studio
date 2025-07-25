@@ -25,9 +25,9 @@ interface TaskFormProps {
 }
 
 const formSchema = z.object({
-  title: z.string().min(1, 'Title is required.'),
+  title: z.string().min(1, 'O título da tarefa é obrigatório.'),
   description: z.string().optional(),
-  dueDate: z.date({ required_error: 'A due date is required.' }),
+  dueDate: z.date({ required_error: 'A data de conclusão é obrigatória.' }),
   priority: z.enum(['low', 'medium', 'high']),
   category: z.string().optional(),
 });
@@ -67,18 +67,18 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
 
       if (task) {
         await updateTask(user.uid, task.id, taskData);
-        toast({ title: 'Task updated successfully!' });
+        toast({ title: 'Tarefa atualizada com sucesso!' });
       } else {
         await addTask(user.uid, taskData as any);
-        toast({ title: 'Task created successfully!' });
+        toast({ title: 'Tarefa criada com sucesso!' });
       }
       setIsOpen(false);
       form.reset();
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: `Failed to ${task ? 'update' : 'create'} task.`,
+        title: 'Erro',
+        description: `Falha ao ${task ? 'atualizar' : 'criar'} a tarefa.`,
       });
     }
   }
@@ -87,9 +87,9 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{task ? 'Edit Task' : 'Create Task'}</DialogTitle>
+          <DialogTitle>{task ? 'Editar Tarefa' : 'Criar Tarefa'}</DialogTitle>
           <DialogDescription>
-            {task ? 'Update the details of your task.' : 'Add a new task to your list.'}
+            {task ? 'Atualize os detalhes da sua tarefa.' : 'Adicione uma nova tarefa à sua lista.'}
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -99,7 +99,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
               name="title"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Title</FormLabel>
+                  <FormLabel>Título</FormLabel>
                   <FormControl>
                     <Input {...field} />
                   </FormControl>
@@ -112,7 +112,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Textarea {...field} />
                   </FormControl>
@@ -125,7 +125,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
               name="dueDate"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Due Date</FormLabel>
+                  <FormLabel>Data de Conclusão</FormLabel>
                    <Popover>
                         <PopoverTrigger asChild>
                           <FormControl>
@@ -139,7 +139,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
                               {field.value ? (
                                 format(field.value, "PPP")
                               ) : (
-                                <span>Pick a date</span>
+                                <span>Escolha uma data</span>
                               )}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
@@ -167,17 +167,17 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
                   name="priority"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Priority</FormLabel>
+                      <FormLabel>Prioridade</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select priority" />
+                            <SelectValue placeholder="Selecione a prioridade" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="low">Low</SelectItem>
-                          <SelectItem value="medium">Medium</SelectItem>
-                          <SelectItem value="high">High</SelectItem>
+                          <SelectItem value="low">Baixa</SelectItem>
+                          <SelectItem value="medium">Média</SelectItem>
+                          <SelectItem value="high">Alta</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -189,9 +189,9 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Category</FormLabel>
+                      <FormLabel>Categoria</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. Work" {...field} />
+                        <Input placeholder="ex: Trabalho" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -199,8 +199,8 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
                 />
             </div>
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancel</Button>
-              <Button type="submit">{task ? 'Save Changes' : 'Create Task'}</Button>
+              <Button type="button" variant="ghost" onClick={() => setIsOpen(false)}>Cancelar</Button>
+              <Button type="submit">{task ? 'Salvar Alterações' : 'Criar Tarefa'}</Button>
             </DialogFooter>
           </form>
         </Form>

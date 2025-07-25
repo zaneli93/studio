@@ -24,6 +24,11 @@ const priorityVariantMap = {
   high: 'destructive',
 } as const;
 
+const priorityNameMap = {
+    low: 'Baixa',
+    medium: 'Média',
+    high: 'Alta',
+};
 
 export default function TaskItem({ task }: TaskItemProps) {
   const { user } = useAuth();
@@ -38,8 +43,8 @@ export default function TaskItem({ task }: TaskItemProps) {
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to update task status.',
+        title: 'Erro',
+        description: 'Falha ao atualizar o status da tarefa.',
       });
     }
   };
@@ -63,11 +68,11 @@ export default function TaskItem({ task }: TaskItemProps) {
             <div className="flex items-center gap-2">
               <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsFormOpen(true)}>
                 <Edit className="h-4 w-4" />
-                <span className="sr-only">Edit Task</span>
+                <span className="sr-only">Editar Tarefa</span>
               </Button>
               <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive" onClick={() => setIsDeleteDialogOpen(true)}>
                 <Trash2 className="h-4 w-4" />
-                <span className="sr-only">Delete Task</span>
+                <span className="sr-only">Excluir Tarefa</span>
               </Button>
             </div>
           </div>
@@ -78,14 +83,14 @@ export default function TaskItem({ task }: TaskItemProps) {
         <CardContent className="flex-grow">
             <div className="text-sm text-muted-foreground flex items-center">
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                Due: {format(task.dueDate, 'PPP')}
+                Vence em: {format(task.dueDate, 'PPP')}
             </div>
         </CardContent>
         <CardFooter className="flex justify-between">
             <div>
               {task.category && <Badge variant="outline">{task.category}</Badge>}
             </div>
-          <Badge variant={priorityVariantMap[task.priority]}>{task.priority}</Badge>
+          <Badge variant={priorityVariantMap[task.priority]}>{priorityNameMap[task.priority]}</Badge>
         </CardFooter>
       </Card>
       <TaskForm isOpen={isFormOpen} setIsOpen={setIsFormOpen} task={task} />

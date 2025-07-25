@@ -29,13 +29,13 @@ export default function DeleteTaskDialog({ isOpen, setIsOpen, taskId }: DeleteTa
     if (!user) return;
     try {
       await deleteTask(user.uid, taskId);
-      toast({ title: 'Task deleted successfully!' });
+      toast({ title: 'Tarefa excluída com sucesso!' });
       setIsOpen(false);
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to delete task.',
+        title: 'Erro',
+        description: 'Falha ao excluir a tarefa.',
       });
     }
   };
@@ -44,15 +44,15 @@ export default function DeleteTaskDialog({ isOpen, setIsOpen, taskId }: DeleteTa
     <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogTitle>Tem certeza?</AlertDialogTitle>
           <AlertDialogDescription>
-            This action cannot be undone. This will permanently delete your task.
+            Esta ação não pode ser desfeita. Isso excluirá permanentemente sua tarefa.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>Cancelar</AlertDialogCancel>
           <AlertDialogAction asChild>
-            <Button variant="destructive" onClick={handleDelete}>Continue</Button>
+            <Button variant="destructive" onClick={handleDelete}>Continuar</Button>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

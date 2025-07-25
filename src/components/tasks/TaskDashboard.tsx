@@ -43,30 +43,30 @@ export default function TaskDashboard() {
   return (
     <div className="container mx-auto p-4 md:p-8">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-        <h1 className="text-2xl sm:text-3xl font-bold">Your Tasks</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Suas Tarefas</h1>
         <div className="flex items-center gap-2">
            <Select value={filters.status} onValueChange={(value) => setFilters(f => ({ ...f, status: value }))}>
               <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Filter by status" />
+                <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="incomplete">Incomplete</SelectItem>
+                <SelectItem value="all">Todos Status</SelectItem>
+                <SelectItem value="incomplete">Incompleta</SelectItem>
               </SelectContent>
             </Select>
 
             <Select value={filters.category} onValueChange={(value) => setFilters(f => ({ ...f, category: value }))}>
               <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Filter by category" />
+                <SelectValue placeholder="Filtrar por categoria" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
+                <SelectItem value="all">Todas Categorias</SelectItem>
                 {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
               </SelectContent>
             </Select>
 
           <Button onClick={() => setIsFormOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" /> New Task
+            <PlusCircle className="mr-2 h-4 w-4" /> Adicionar Tarefa
           </Button>
         </div>
       </div>
@@ -84,8 +84,8 @@ export default function TaskDashboard() {
       ) : (
         <div className="text-center py-16 border-dashed border-2 rounded-lg">
             <Inbox className="mx-auto h-12 w-12 text-muted-foreground" />
-            <h3 className="mt-4 text-lg font-semibold">No tasks yet</h3>
-            <p className="mt-1 text-sm text-muted-foreground">Click "New Task" to add your first to-do.</p>
+            <h3 className="mt-4 text-lg font-semibold">Nenhuma tarefa ainda</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Clique em "Adicionar Tarefa" para adicionar seu primeiro a fazer.</p>
         </div>
       )}
 

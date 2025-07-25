@@ -11,27 +11,27 @@ export default function RegisterPage() {
           <div className="flex flex-col space-y-2 text-center">
             <ListTodo className="mx-auto h-8 w-8" />
             <h1 className="text-2xl font-semibold tracking-tight">
-              Create an account
+              Crie sua conta
             </h1>
             <p className="text-sm text-muted-foreground">
-              Enter your email below to create your account
+              Digite seu e-mail abaixo para criar sua conta
             </p>
           </div>
           <RegisterForm />
           <p className="px-8 text-center text-sm text-muted-foreground">
-            By clicking continue, you agree to our{" "}
+            Ao clicar em continuar, você concorda com nossos{" "}
             <Link
               href="/terms"
               className="hover:text-brand underline underline-offset-4"
             >
-              Terms of Service
+              Termos de Serviço
             </Link>{" "}
-            and{" "}
+            e{" "}
             <Link
               href="/privacy"
               className="hover:text-brand underline underline-offset-4"
             >
-              Privacy Policy
+              Política de Privacidade
             </Link>
             .
           </p>
@@ -40,7 +40,7 @@ export default function RegisterPage() {
               href="/login"
               className="hover:text-brand underline underline-offset-4"
             >
-              Already have an account? Login
+              Já tem uma conta? Entrar
             </Link>
           </p>
         </div>

@@ -41,14 +41,14 @@ function LandingPage() {
           Task Ticker
         </h1>
         <p className="max-w-[750px] text-center text-lg text-muted-foreground sm:text-xl">
-          Your personal, simple, and efficient task management tool. Keep track of your to-dos with ease.
+          Sua ferramenta de gerenciamento de tarefas pessoal, simples e eficiente. Acompanhe seus afazeres com facilidade.
         </p>
         <div className="flex w-full items-center justify-center space-x-4 py-4 md:py-10">
           <Button asChild>
-            <Link href="/login">Login</Link>
+            <Link href="/login">Entrar</Link>
           </Button>
           <Button variant="outline" asChild>
-            <Link href="/register">Sign Up</Link>
+            <Link href="/register">Cadastrar</Link>
           </Button>
         </div>
       </section>
