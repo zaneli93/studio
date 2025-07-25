@@ -1,5 +1,5 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,9 +14,10 @@ import { useToast } from '@/hooks/use-toast';
 import type { Task } from '@/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, LoaderCircle } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 interface TaskFormProps {
@@ -36,6 +37,7 @@ const formSchema = z.object({
 export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -53,7 +55,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
         form.reset({
             title: task.title,
             description: task.description || '',
-            dueDate: task.dueDate,
+            dueDate: task.dueDate || undefined,
             priority: task.priority || 'medium',
             category: task.category || '',
         });
@@ -69,6 +71,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
   }, [task, form, isOpen]);
   
   const handleOpenChange = (open: boolean) => {
+    if (isSubmitting) return;
     if (!open) {
       form.reset();
     }
@@ -77,6 +80,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     if (!user) return;
+    setIsSubmitting(true);
     try {
       const taskData = {
         title: values.title,
@@ -94,12 +98,15 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
         toast({ title: 'Tarefa criada com sucesso!' });
       }
       handleOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
+      console.error("Erro ao salvar tarefa:", error);
       toast({
         variant: 'destructive',
         title: 'Erro ao salvar tarefa',
         description: `Não foi possível salvar a tarefa. Por favor, verifique sua conexão e tente novamente.`,
       });
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -134,7 +141,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
                 <FormItem>
                   <FormLabel>Descrição</FormLabel>
                   <FormControl>
-                    <Textarea {...field} />
+                    <Textarea placeholder="Adicione mais detalhes..." {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -157,7 +164,7 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
                               )}
                             >
                               {field.value ? (
-                                format(field.value, "PPP")
+                                format(field.value, "PPP", { locale: ptBR })
                               ) : (
                                 <span>Escolha uma data</span>
                               )}
@@ -170,6 +177,8 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
+                            locale={ptBR}
+                            disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1))}
                             initialFocus
                           />
                         </PopoverContent>
@@ -216,8 +225,11 @@ export default function TaskForm({ isOpen, setIsOpen, task }: TaskFormProps) {
                 />
             </div>
             <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)}>Cancelar</Button>
-              <Button type="submit">{task ? 'Salvar Alterações' : 'Criar Tarefa'}</Button>
+              <Button type="button" variant="ghost" onClick={() => handleOpenChange(false)} disabled={isSubmitting}>Cancelar</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+                {task ? 'Salvar Alterações' : 'Criar Tarefa'}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,6 +15,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { deleteTask } from '@/lib/tasks';
 import { Button } from '../ui/button';
+import { LoaderCircle } from 'lucide-react';
 
 interface DeleteTaskDialogProps {
   isOpen: boolean;
@@ -24,19 +26,24 @@ interface DeleteTaskDialogProps {
 export default function DeleteTaskDialog({ isOpen, setIsOpen, taskId }: DeleteTaskDialogProps) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
     if (!user) return;
+    setIsDeleting(true);
     try {
       await deleteTask(user.uid, taskId);
       toast({ title: 'Tarefa excluída com sucesso!' });
       setIsOpen(false);
     } catch (error) {
+      console.error("Erro ao excluir tarefa:", error);
       toast({
         variant: 'destructive',
         title: 'Erro ao excluir tarefa',
-        description: 'Não foi possível excluir a tarefa.',
+        description: 'Não foi possível excluir a tarefa. Tente novamente.',
       });
+    } finally {
+        setIsDeleting(false);
     }
   };
 
@@ -50,9 +57,14 @@ export default function DeleteTaskDialog({ isOpen, setIsOpen, taskId }: DeleteTa
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogCancel asChild>
+             <Button variant="ghost" onClick={() => setIsOpen(false)} disabled={isDeleting}>Cancelar</Button>
+          </AlertDialogCancel>
           <AlertDialogAction asChild>
-            <Button variant="destructive" onClick={handleDelete}>Excluir</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting && <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />}
+              Excluir
+            </Button>
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
